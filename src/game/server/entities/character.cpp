@@ -49,6 +49,15 @@ CCharacter::CCharacter(CGameWorld *pWorld, CNetObj_PlayerInput LastInput) :
 	{
 		CurrentTimeCp = 0.0f;
 	}
+
+	for(int &Id : m_aUntranslatedId)
+		Id = Server()->SnapNewId();
+}
+
+CCharacter::~CCharacter()
+{
+	for(int Id : m_aUntranslatedId)
+		Server()->SnapFreeId(Id);
 }
 
 void CCharacter::Reset()
@@ -1066,7 +1075,7 @@ void CCharacter::CancelSwapRequests()
 	GetPlayer()->m_SwapTargetsClientId = -1;
 }
 
-void CCharacter::SnapCharacter(int SnappingClient, int Id)
+void CCharacter::SnapCharacter(int SnappingClient, int MapId)
 {
 	int SnappingClientVersion = GameServer()->GetClientVersion(SnappingClient);
 	CCharacterCore *pCore;
@@ -1135,20 +1144,17 @@ void CCharacter::SnapCharacter(int SnappingClient, int Id)
 
 	if(!Server()->IsSixup(SnappingClient))
 	{
-		CNetObj_Character *pCharacter = Server()->SnapNewItem<CNetObj_Character>(Id);
+		CNetObj_Character *pCharacter = Server()->SnapNewItem<CNetObj_Character>(MapId);
 		if(!pCharacter)
 			return;
 
 		pCore->Write(pCharacter);
 
+		if(!Server()->Translate(pCharacter->m_HookedPlayer, SnappingClient))
+			pCharacter->m_HookedPlayer = -1;
+
 		pCharacter->m_Tick = Tick;
 		pCharacter->m_Emote = Emote;
-
-		if(pCharacter->m_HookedPlayer != -1)
-		{
-			if(!Server()->Translate(pCharacter->m_HookedPlayer, SnappingClient))
-				pCharacter->m_HookedPlayer = -1;
-		}
 
 		pCharacter->m_AttackTick = m_AttackTick;
 		pCharacter->m_Direction = m_Input.m_Direction;
@@ -1160,7 +1166,7 @@ void CCharacter::SnapCharacter(int SnappingClient, int Id)
 	}
 	else
 	{
-		protocol7::CNetObj_Character *pCharacter = Server()->SnapNewItem<protocol7::CNetObj_Character>(Id);
+		protocol7::CNetObj_Character *pCharacter = Server()->SnapNewItem<protocol7::CNetObj_Character>(MapId);
 		if(!pCharacter)
 			return;
 
@@ -1169,6 +1175,9 @@ void CCharacter::SnapCharacter(int SnappingClient, int Id)
 		{
 			pCharacter->m_Angle -= (int)(2.0f * pi * 256.0f);
 		}
+
+		if(!Server()->Translate(pCharacter->m_HookedPlayer, SnappingClient))
+			pCharacter->m_HookedPlayer = -1;
 
 		// m_HookTick can be negative when using the hook_duration tune, which 0.7 clients
 		// will consider invalid. https://github.com/ddnet/ddnet/issues/3915
@@ -1215,8 +1224,6 @@ bool CCharacter::CanSnapCharacter(int SnappingClient)
 
 bool CCharacter::IsSnappingCharacterInView(int SnappingClientId)
 {
-	int Id = m_pPlayer->GetCid();
-
 	// A player may not be clipped away if their hook or a hook attached to them is in the field of view
 	bool PlayerAndHookNotInView = NetworkClippedLine(SnappingClientId, m_Pos, m_Core.m_HookPos);
 	bool AttachedHookInView = false;
@@ -1225,7 +1232,7 @@ bool CCharacter::IsSnappingCharacterInView(int SnappingClientId)
 		for(const auto &AttachedPlayerId : m_Core.m_AttachedPlayers)
 		{
 			const CCharacter *pOtherPlayer = GameServer()->GetPlayerChar(AttachedPlayerId);
-			if(pOtherPlayer && pOtherPlayer->m_Core.HookedPlayer() == Id)
+			if(pOtherPlayer && pOtherPlayer->m_Core.HookedPlayer() == m_pPlayer->GetCid())
 			{
 				if(!NetworkClippedLine(SnappingClientId, m_Pos, pOtherPlayer->m_Pos))
 				{
@@ -1244,23 +1251,42 @@ bool CCharacter::IsSnappingCharacterInView(int SnappingClientId)
 
 void CCharacter::Snap(int SnappingClient)
 {
-	int Id = m_pPlayer->GetCid();
-
-	if(!Server()->Translate(Id, SnappingClient))
-		return;
-
 	if(!CanSnapCharacter(SnappingClient))
 	{
 		return;
 	}
 
 	// always snap the snapping client, even if it is not in view
-	if(!IsSnappingCharacterInView(SnappingClient) && Id != SnappingClient)
+	if(!IsSnappingCharacterInView(SnappingClient) && m_pPlayer->GetCid() != SnappingClient)
 		return;
 
-	SnapCharacter(SnappingClient, Id);
+	int SnappingClientVersion = GameServer()->GetClientVersion(SnappingClient);
 
-	CNetObj_DDNetCharacter *pDDNetCharacter = Server()->SnapNewItem<CNetObj_DDNetCharacter>(Id);
+	// Translate id, if we are not in the map of the other person display us as weapon and our hook as a laser.
+	// This shouldn't happen but is realistically impossible to avoid as soon as you zoom out a little or simply
+	// more than 62 tees are around you. A bug might also occur in the playermapping algorithm, so best practice is to never let
+	// a player be confused by why they got hooked or why some projectiles randomly appear by showing the player as weapon.
+	int TranslatedId = m_pPlayer->GetCid();
+	if(SnappingClient > -1 && !Server()->Translate(TranslatedId, SnappingClient))
+	{
+		CSnapContext SnapContext = CSnapContext(SnappingClientVersion, Server()->IsSixup(SnappingClient), SnappingClient);
+
+		int Subtype = GetActiveWeapon();
+		int Type = Subtype == WEAPON_NINJA ? POWERUP_NINJA : POWERUP_WEAPON;
+		GameServer()->SnapPickup(SnapContext, m_aUntranslatedId[EUntranslatedMap::ID_WEAPON], m_Pos, Type, Subtype, 0, PICKUPFLAG_NO_PREDICT);
+
+		if(m_Core.m_HookState != HOOK_IDLE && m_Core.m_HookState != HOOK_RETRACTED)
+		{
+			int StartTick = Server()->Tick() - 3;
+			GameServer()->SnapLaserObject(SnapContext, m_aUntranslatedId[EUntranslatedMap::ID_HOOK], m_Core.m_HookPos, m_Pos, StartTick, -1, LASERTYPE_RIFLE);
+		}
+		return;
+	}
+
+	// otherwise show our normal tee and send ddnet character stuff
+	SnapCharacter(SnappingClient, TranslatedId);
+
+	CNetObj_DDNetCharacter *pDDNetCharacter = Server()->SnapNewItem<CNetObj_DDNetCharacter>(TranslatedId);
 	if(!pDDNetCharacter)
 		return;
 
@@ -1313,7 +1339,11 @@ void CCharacter::Snap(int SnappingClient)
 	pDDNetCharacter->m_FreezeEnd = m_Core.m_DeepFrozen ? -1 : (m_FreezeTime == 0 ? 0 : Server()->Tick() + m_FreezeTime);
 	pDDNetCharacter->m_Jumps = m_Core.m_Jumps;
 	pDDNetCharacter->m_TeleCheckpoint = m_TeleCheckpoint;
-	pDDNetCharacter->m_StrongWeakId = m_StrongWeakId;
+
+	int StrongWeakId = m_StrongWeakId;
+	if(SnappingClientVersion < VERSION_DDNET_128_PLAYERS && SnappingClient >= 0 && GameServer()->m_apPlayers[SnappingClient])
+		StrongWeakId = GameServer()->m_apPlayers[SnappingClient]->m_aStrongWeakId[TranslatedId];
+	pDDNetCharacter->m_StrongWeakId = StrongWeakId;
 
 	// Display Information
 	pDDNetCharacter->m_JumpedTotal = m_Core.m_JumpedTotal;

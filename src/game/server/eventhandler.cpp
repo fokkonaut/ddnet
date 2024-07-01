@@ -60,9 +60,25 @@ void CEventHandler::Snap(int SnappingClient)
 				if(GameServer()->Server()->IsSixup(SnappingClient))
 					EventToSixup(&Type, &Size, &pData);
 
-				void *pItem = GameServer()->Server()->SnapNewItem(Type, i, Size);
-				if(pItem)
-					mem_copy(pItem, pData, Size);
+				const auto &&SnapEvent = [&]() {
+					void *pItem = GameServer()->Server()->SnapNewItem(Type, i, Size);
+					if(pItem)
+						mem_copy(pItem, pData, Size);
+				};
+
+				if(Type == NETEVENTTYPE_DEATH)
+				{
+					int *pEventClientId = &((CNetEvent_Death *)pData)->m_ClientId;
+					int ClientId = *pEventClientId; // Save real Id
+					if(!GameServer()->Server()->Translate(*pEventClientId, SnappingClient))
+						continue;
+					SnapEvent();
+					*pEventClientId = ClientId; // Reset Id for others
+				}
+				else
+				{
+					SnapEvent();
+				}
 			}
 		}
 	}
@@ -81,6 +97,7 @@ void CEventHandler::EventToSixup(int *pType, int *pSize, const char **ppData)
 		pEvent7->m_X = pEvent->m_X;
 		pEvent7->m_Y = pEvent->m_Y;
 
+		// If ClientId is used in the future, translate it like death
 		pEvent7->m_ClientId = 0;
 		pEvent7->m_Angle = 0;
 
