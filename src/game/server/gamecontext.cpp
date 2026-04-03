@@ -2755,8 +2755,25 @@ void CGameContext::OnSetTeamNetMessage(const CNetMsg_Cl_SetTeam *pMsg, int Clien
 	{
 		if(pPlayer->GetTeam() == TEAM_SPECTATORS || pMsg->m_Team == TEAM_SPECTATORS)
 			m_VoteUpdate = true;
-		m_pController->DoTeamChange(pPlayer, pMsg->m_Team);
-		pPlayer->m_TeamChangeTick = Server()->Tick();
+
+		if(pMsg->m_Team != TEAM_SPECTATORS)
+		{
+			m_pController->DoTeamChange(pPlayer, pMsg->m_Team);
+			pPlayer->m_TeamChangeTick = Server()->Tick();
+		}
+		else
+		{
+			Console()->SetFlagMask(CFGFLAG_CHAT);
+			{
+				CClientChatLogger Logger(this, ClientId, log_get_scope_logger());
+				CLogScope Scope(&Logger);
+				Console()->ExecuteLine("spec", ClientId, false);
+			}
+			char aBuf[256];
+			str_format(aBuf, sizeof(aBuf), "%d used /spec", ClientId);
+			Console()->Print(IConsole::OUTPUT_LEVEL_DEBUG, "chat-command", aBuf);
+			Console()->SetFlagMask(CFGFLAG_SERVER);
+		}
 	}
 	else
 		SendBroadcast(aTeamJoinError, ClientId);
