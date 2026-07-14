@@ -357,6 +357,8 @@ public:
 	virtual void OnClientPredictedInput(int ClientId, const void *pInput) = 0;
 	virtual void OnClientPredictedEarlyInput(int ClientId, const void *pInput) = 0;
 
+	virtual void PreInputClients(int ClientId, bool *pClients) = 0;
+
 	virtual bool IsClientReady(int ClientId) const = 0;
 	virtual bool IsClientPlayer(int ClientId) const = 0;
 	virtual bool IsClientHighBandwidth(int ClientId) const = 0;
