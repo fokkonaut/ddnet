@@ -24,7 +24,7 @@ GameInfoFlags = [
 ]
 GameInfoFlags2 = [
 	"ALLOW_X_SKINS", "GAMETYPE_CITY", "GAMETYPE_FDDRACE", "ENTITIES_FDDRACE", "HUD_HEALTH_ARMOR", "HUD_AMMO",
-	"HUD_DDRACE", "NO_WEAK_HOOK", "NO_SKIN_CHANGE_FOR_FROZEN", "DDRACE_TEAM", "PREDICT_EVENTS"
+	"HUD_DDRACE", "NO_WEAK_HOOK", "NO_SKIN_CHANGE_FOR_FROZEN", "DDRACE_TEAM"
 ]
 ExPlayerFlags = ["AFK", "PAUSED", "SPEC"]
 LegacyProjectileFlags = [f"CLIENTID_BIT{i}" for i in range(8)] + [
@@ -77,7 +77,7 @@ enum
 
 enum
 {
-	GAMEINFO_CURVERSION=11,
+	GAMEINFO_CURVERSION=10,
 };
 '''
 
@@ -620,23 +620,6 @@ Messages = [
 
 	NetMessageEx("Sv_MapSoundGlobal", "map-sound-global@netmsg.ddnet.org", [
 		NetIntAny("m_SoundId"),
-	]),
-
-	NetMessageEx("Sv_PreInput", "preinput@netmsg.ddnet.org", [
-		NetIntAny("m_Direction"),
-		NetIntAny("m_TargetX"),
-		NetIntAny("m_TargetY"),
-
-		NetIntAny("m_Jump"),
-		NetIntAny("m_Fire"),
-		NetIntAny("m_Hook"),
-		
-		NetIntAny("m_WantedWeapon"),
-		NetIntAny("m_NextWeapon"),
-		NetIntAny("m_PrevWeapon"),
-
-		NetIntRange("m_Owner", 0, 'MAX_CLIENTS-1'),
-		NetTick("m_IntendedTick"),
 	]),
 
 	NetMessageEx("Sv_SaveCode", "save-code@netmsg.ddnet.org", [

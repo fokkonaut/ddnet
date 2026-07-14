@@ -347,7 +347,7 @@ void CGameContext::CreateDamageInd(vec2 Pos, float Angle, int Amount, CClientMas
 	float e = a + pi / 3;
 	for(int i = 0; i < Amount; i++)
 	{
-		float f = mix(s, e, (i + 1) / (float)(Amount + 1));
+		float f = mix(s, e, (i + 1) / (float)(Amount + 2));
 		CNetEvent_DamageInd *pEvent = m_Events.Create<CNetEvent_DamageInd>(Mask);
 		if(pEvent)
 		{
@@ -1453,37 +1453,6 @@ void CGameContext::OnTick()
 		m_TeeHistorian.BeginInputs();
 	}
 	// Warning: do not put code in this function directly above or below this comment
-}
-
-void CGameContext::PreInputClients(int ClientId, bool *pClients)
-{
-	if(!pClients || !m_apPlayers[ClientId])
-		return;
-
-	CCharacter *pInputChr = m_apPlayers[ClientId]->GetCharacter();
-	if(!pInputChr || m_apPlayers[ClientId]->GetTeam() == TEAM_SPECTATORS || m_apPlayers[ClientId]->IsAfk())
-		return;
-
-	for(int Id = 0; Id < MAX_CLIENTS; Id++)
-	{
-		if(ClientId == Id)
-			continue;
-
-		CPlayer *pPlayer = m_apPlayers[Id];
-		if(!pPlayer)
-			continue;
-
-		if(Server()->GetClientVersion(Id) < VERSION_DDNET_PREINPUT)
-			continue;
-
-		if(pPlayer->GetTeam() == TEAM_SPECTATORS || GetDDRaceTeam(ClientId) != GetDDRaceTeam(Id) || pPlayer->IsAfk())
-			continue;
-
-		if(!pInputChr->CanSnapCharacter(Id) || pInputChr->NetworkClipped(Id))
-			continue;
-
-		pClients[Id] = true;
-	}
 }
 
 // Server hooks
