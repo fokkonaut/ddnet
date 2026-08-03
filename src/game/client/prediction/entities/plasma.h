@@ -25,7 +25,7 @@ public:
 	bool Match(const CPlasma *pPlasma) const;
 	void Read(const CLaserData *pData);
 
-	void Reset();
+	void Reset() override;
 	void Tick() override;
 };
 

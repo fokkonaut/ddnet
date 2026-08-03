@@ -14,7 +14,8 @@
 
 CLight::CLight(CGameWorld *pGameWorld, vec2 Pos, float Rotation, int Length,
 	int Layer, int Number) :
-	CEntity(pGameWorld, CGameWorld::ENTTYPE_LASER, true)
+	CEntityBase(pGameWorld, CGameWorld::ENTTYPE_LASER),
+	CEntity(true)
 {
 	m_To = vec2(0.0f, 0.0f);
 	m_Core = vec2(0.0f, 0.0f);
@@ -31,7 +32,7 @@ CLight::CLight(CGameWorld *pGameWorld, vec2 Pos, float Rotation, int Length,
 
 bool CLight::HitCharacter()
 {
-	std::vector<CCharacter *> vpHitCharacters = GameServer()->m_World.IntersectedCharacters(m_Pos, m_To, 0.0f, nullptr);
+	std::vector<CCharacterBase *> vpHitCharacters = GameServer()->m_World.IntersectedCharacters(m_Pos, m_To, 0.0f, nullptr);
 	if(vpHitCharacters.empty())
 		return false;
 	for(auto *pChar : vpHitCharacters)

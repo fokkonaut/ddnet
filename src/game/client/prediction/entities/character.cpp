@@ -138,7 +138,7 @@ void CCharacter::HandleNinja()
 
 		// check if we Hit anything along the way
 		{
-			CEntity *apEnts[MAX_CLIENTS];
+			CEntityBase *apEnts[MAX_CLIENTS];
 			float Radius = m_ProximityRadius * 2.0f;
 			int Num = GameWorld()->FindEntities(OldPos, Radius, apEnts, MAX_CLIENTS, CGameWorld::ENTTYPE_CHARACTER);
 
@@ -148,7 +148,7 @@ void CCharacter::HandleNinja()
 
 			for(int i = 0; i < Num; ++i)
 			{
-				auto *pChr = static_cast<CCharacter *>(apEnts[i]);
+				auto *pChr = dynamic_cast<CCharacter *>(apEnts[i]);
 				if(pChr == this)
 					continue;
 
@@ -317,14 +317,14 @@ void CCharacter::FireWeapon()
 
 		GameWorld()->CreatePredictedSound(m_Pos, SOUND_HAMMER_FIRE, GetCid());
 
-		CEntity *apEnts[MAX_CLIENTS];
+		CEntityBase *apEnts[MAX_CLIENTS];
 		int Hits = 0;
 		int Num = GameWorld()->FindEntities(ProjStartPos, m_ProximityRadius * 0.5f, apEnts,
 			MAX_CLIENTS, CGameWorld::ENTTYPE_CHARACTER);
 
 		for(int i = 0; i < Num; ++i)
 		{
-			auto *pTarget = static_cast<CCharacter *>(apEnts[i]);
+			auto *pTarget = dynamic_cast<CCharacter *>(apEnts[i]);
 
 			if((pTarget == this || !CanCollide(pTarget->GetCid())))
 				continue;
@@ -610,12 +610,12 @@ void CCharacter::PreTick()
 	DDRaceTick();
 
 	m_Core.m_Input = m_Input;
-	m_Core.Tick(true, !m_pGameWorld->m_WorldConfig.m_NoWeakHookAndBounce);
+	m_Core.Tick(true, !GameWorld()->m_WorldConfig.m_NoWeakHookAndBounce);
 }
 
 void CCharacter::Tick()
 {
-	if(m_pGameWorld->m_WorldConfig.m_NoWeakHookAndBounce)
+	if(GameWorld()->m_WorldConfig.m_NoWeakHookAndBounce)
 	{
 		m_Core.TickDeferred();
 	}
@@ -1271,7 +1271,8 @@ CTeamsCore *CCharacter::TeamsCore()
 }
 
 CCharacter::CCharacter(CGameWorld *pGameWorld, int Id, CNetObj_Character *pChar, CNetObj_DDNetCharacter *pExtended) :
-	CEntity(pGameWorld, CGameWorld::ENTTYPE_CHARACTER, vec2(0, 0), CCharacterCore::PhysicalSize())
+	CEntityBase(pGameWorld, CGameWorld::ENTTYPE_CHARACTER, vec2(0, 0), CCharacterCore::PhysicalSize()),
+	CEntity(pGameWorld)
 {
 	m_Id = Id;
 	m_IsLocal = false;

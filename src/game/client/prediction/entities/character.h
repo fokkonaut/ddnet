@@ -8,6 +8,7 @@
 #include <game/client/prediction/entity.h>
 #include <game/gamecore.h>
 #include <game/race_state.h>
+#include <game/shared/entities/character.h>
 
 enum
 {
@@ -20,14 +21,14 @@ enum
 	FAKETUNE_NOHAMMER = 1 << 6,
 };
 
-class CCharacter : public CEntity
+class CCharacter : public CEntity, public CCharacterBase
 {
 	friend class CGameWorld;
 
 public:
 	~CCharacter() override;
 
-	void PreTick() override;
+	void PreTick();
 	void Tick() override;
 	void TickDeferred() override;
 
@@ -99,7 +100,7 @@ public:
 	void SetNinjaActivationDir(vec2 ActivationDir) { m_Core.m_Ninja.m_ActivationDir = ActivationDir; }
 	void SetNinjaActivationTick(int ActivationTick) { m_Core.m_Ninja.m_ActivationTick = ActivationTick; }
 	void SetNinjaCurrentMoveTime(int CurrentMoveTime) { m_Core.m_Ninja.m_CurrentMoveTime = CurrentMoveTime; }
-	int GetCid() { return m_Id; }
+	int GetCid() { return m_Id.value_or(-1); }
 	void SetInput(const CNetObj_PlayerInput *pNewInput)
 	{
 		m_LatestInput = m_Input = *pNewInput;

@@ -15,7 +15,8 @@
 #include <game/server/teams.h>
 
 CDragger::CDragger(CGameWorld *pGameWorld, vec2 Pos, float Strength, bool IgnoreWalls, int Layer, int Number) :
-	CEntity(pGameWorld, CGameWorld::ENTTYPE_LASER, true)
+	CEntityBase(pGameWorld, CGameWorld::ENTTYPE_LASER),
+	CEntity(true)
 {
 	m_Core = vec2(0.0f, 0.0f);
 	m_Pos = Pos;
@@ -57,7 +58,7 @@ void CDragger::Tick()
 void CDragger::LookForPlayersToDrag()
 {
 	// Create a list of players who are in the range of the dragger
-	CEntity *apPlayersInRange[MAX_CLIENTS];
+	CEntityBase *apPlayersInRange[MAX_CLIENTS];
 	std::fill(std::begin(apPlayersInRange), std::end(apPlayersInRange), nullptr);
 
 	int NumPlayersInRange = GameServer()->m_World.FindEntities(m_Pos,
@@ -76,7 +77,7 @@ void CDragger::LookForPlayersToDrag()
 
 	for(int i = 0; i < NumPlayersInRange; i++)
 	{
-		CCharacter *pTarget = static_cast<CCharacter *>(apPlayersInRange[i]);
+		CCharacter *pTarget = dynamic_cast<CCharacter *>(apPlayersInRange[i]);
 		const int &TargetTeam = pTarget->Team();
 
 		// Do not create a dragger beam for super player

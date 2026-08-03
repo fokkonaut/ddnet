@@ -16,11 +16,11 @@ void CPickup::Tick()
 {
 	Move();
 	// Check if a player intersected us
-	CEntity *apEnts[MAX_CLIENTS];
+	CEntityBase *apEnts[MAX_CLIENTS];
 	int Num = GameWorld()->FindEntities(m_Pos, GetProximityRadius() + ms_CollisionExtraSize, apEnts, MAX_CLIENTS, CGameWorld::ENTTYPE_CHARACTER);
 	for(int i = 0; i < Num; ++i)
 	{
-		auto *pChr = static_cast<CCharacter *>(apEnts[i]);
+		auto *pChr = dynamic_cast<CCharacter *>(apEnts[i]);
 		if(pChr)
 		{
 			if(GameWorld()->m_WorldConfig.m_IsVanilla && distance(m_Pos, pChr->m_Pos) >= (GetProximityRadius() + ms_CollisionExtraSize) * 2) // pickup distance is shorter on vanilla due to using ClosestEntity
@@ -166,7 +166,8 @@ void CPickup::Move()
 }
 
 CPickup::CPickup(CGameWorld *pGameWorld, int Id, const CPickupData *pPickup) :
-	CEntity(pGameWorld, CGameWorld::ENTTYPE_PICKUP, vec2(0, 0), PICKUP_PHYSICS_RADIUS)
+	CEntityBase(pGameWorld, CGameWorld::ENTTYPE_PICKUP, vec2(0, 0), PICKUP_PHYSICS_RADIUS),
+	CEntity(pGameWorld)
 {
 	m_Pos = pPickup->m_Pos;
 	m_Type = pPickup->m_Type;

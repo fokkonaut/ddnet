@@ -89,8 +89,8 @@ void IGameController::DoActivityCheck()
 float IGameController::EvaluateSpawnPos(CSpawnEval *pEval, vec2 Pos, int ClientId)
 {
 	float Score = 0.0f;
-	CCharacter *pC = static_cast<CCharacter *>(GameServer()->m_World.FindFirst(CGameWorld::ENTTYPE_CHARACTER));
-	for(; pC; pC = (CCharacter *)pC->TypeNext())
+	CCharacterBase *pC = dynamic_cast<CCharacterBase *>(GameServer()->m_World.FindFirst(CGameWorld::ENTTYPE_CHARACTER));
+	for(; pC; pC = dynamic_cast<CCharacter *>(pC->TypeNext()))
 	{
 		if(!pC->CanCollide(ClientId))
 			continue;
@@ -126,7 +126,7 @@ void IGameController::EvaluateSpawnType(CSpawnEval *pEval, ESpawnType SpawnType,
 			if(j == 0)
 			{
 				// check if the position is occupado
-				CEntity *apEnts[MAX_CLIENTS];
+				CEntityBase *apEnts[MAX_CLIENTS];
 				int Num = GameServer()->m_World.FindEntities(SpawnPoint, 64, apEnts, MAX_CLIENTS, CGameWorld::ENTTYPE_CHARACTER);
 				vec2 aPositions[5] = {vec2(0.0f, 0.0f), vec2(-32.0f, 0.0f), vec2(0.0f, -32.0f), vec2(32.0f, 0.0f), vec2(0.0f, 32.0f)}; // start, left, up, right, down
 				int Result = -1;
@@ -137,7 +137,7 @@ void IGameController::EvaluateSpawnType(CSpawnEval *pEval, ESpawnType SpawnType,
 						break;
 					for(int c = 0; c < Num; ++c)
 					{
-						CCharacter *pChr = static_cast<CCharacter *>(apEnts[c]);
+						CCharacter *pChr = dynamic_cast<CCharacter *>(apEnts[c]);
 						const bool CanCollide = pChr->CanCollide(ClientId) && !pChr->GetCore().m_CollisionDisabled;
 
 						if(GameServer()->Collision()->CheckPoint(SpawnPoint + aPositions[Index]) ||

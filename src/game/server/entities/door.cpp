@@ -12,7 +12,8 @@
 
 CDoor::CDoor(CGameWorld *pGameWorld, vec2 Pos, float Rotation, int Length,
 	int Number) :
-	CEntity(pGameWorld, CGameWorld::ENTTYPE_LASER, true)
+	CEntityBase(pGameWorld, CGameWorld::ENTTYPE_LASER),
+	CEntity(true)
 {
 	m_Number = Number;
 	m_Pos = Pos;

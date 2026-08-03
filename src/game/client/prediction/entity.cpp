@@ -8,22 +8,9 @@
 //////////////////////////////////////////////////
 // Entity
 //////////////////////////////////////////////////
-CEntity::CEntity(CGameWorld *pGameWorld, int ObjType, vec2 Pos, int ProximityRadius)
+CEntity::CEntity(CGameWorld *pGameWorld, int ObjType, vec2 Pos, int ProximityRadius) : CEntityBase(pGameWorld, ObjType, Pos, ProximityRadius)
 {
-	m_pGameWorld = pGameWorld;
-
-	m_ObjType = ObjType;
-	m_Pos = Pos;
-	m_ProximityRadius = ProximityRadius;
-
-	m_MarkedForDestroy = false;
-	m_Id = -1;
-
-	m_pPrevTypeEntity = nullptr;
-	m_pNextTypeEntity = nullptr;
 	m_SnapTicks = -1;
-
-	// DDRace
 	m_pParent = nullptr;
 	m_pChild = nullptr;
 	m_DestroyTick = -1;
@@ -34,10 +21,4 @@ CEntity::~CEntity()
 {
 	if(GameWorld())
 		GameWorld()->RemoveEntity(this);
-}
-
-bool CEntity::GameLayerClipped(vec2 CheckPos)
-{
-	return round_to_int(CheckPos.x) / 32 < -200 || round_to_int(CheckPos.x) / 32 > Collision()->GetWidth() + 200 ||
-	       round_to_int(CheckPos.y) / 32 < -200 || round_to_int(CheckPos.y) / 32 > Collision()->GetHeight() + 200;
 }

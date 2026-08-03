@@ -386,14 +386,14 @@ void CGameContext::CreateExplosion(vec2 Pos, int Owner, int Weapon, bool NoDamag
 	}
 
 	// deal damage
-	CEntity *apEnts[MAX_CLIENTS];
+	CEntityBase *apEnts[MAX_CLIENTS];
 	float Radius = 135.0f;
 	float InnerRadius = 48.0f;
 	int Num = m_World.FindEntities(Pos, Radius, apEnts, MAX_CLIENTS, CGameWorld::ENTTYPE_CHARACTER);
 	CClientMask TeamMask = CClientMask().set();
 	for(int i = 0; i < Num; i++)
 	{
-		auto *pChr = static_cast<CCharacter *>(apEnts[i]);
+		auto *pChr = dynamic_cast<CCharacter *>(apEnts[i]);
 		vec2 Diff = pChr->m_Pos - Pos;
 		vec2 ForceDir(0, 1);
 		float l = length(Diff);

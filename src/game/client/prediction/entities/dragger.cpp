@@ -27,7 +27,7 @@ void CDragger::Tick()
 void CDragger::LookForPlayersToDrag()
 {
 	// Create a list of players who are in the range of the dragger
-	CEntity *apPlayersInRange[MAX_CLIENTS];
+	CEntityBase *apPlayersInRange[MAX_CLIENTS];
 	std::fill(std::begin(apPlayersInRange), std::end(apPlayersInRange), nullptr);
 
 	int NumPlayersInRange = GameWorld()->FindEntities(m_Pos,
@@ -41,7 +41,7 @@ void CDragger::LookForPlayersToDrag()
 
 	for(int i = 0; i < NumPlayersInRange; i++)
 	{
-		CCharacter *pTarget = static_cast<CCharacter *>(apPlayersInRange[i]);
+		CCharacter *pTarget = dynamic_cast<CCharacter *>(apPlayersInRange[i]);
 		const int &TargetTeam = pTarget->Team();
 
 		// Do not create a dragger beam for super player
@@ -130,7 +130,8 @@ void CDragger::DraggerBeamTick()
 }
 
 CDragger::CDragger(CGameWorld *pGameWorld, int Id, const CLaserData *pData) :
-	CEntity(pGameWorld, CGameWorld::ENTTYPE_DRAGGER)
+	CEntityBase(pGameWorld, CGameWorld::ENTTYPE_DRAGGER),
+	CEntity(pGameWorld)
 {
 	m_Core = vec2(0.f, 0.f);
 	m_Id = Id;

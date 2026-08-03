@@ -3,65 +3,37 @@
 #ifndef GAME_CLIENT_PREDICTION_GAMEWORLD_H
 #define GAME_CLIENT_PREDICTION_GAMEWORLD_H
 
-#include <game/gamecore.h>
 #include <game/teamscore.h>
 
-#include <list>
-#include <vector>
+#include <game/shared/gameworld.h>
 
-class CCollision;
+#include <list>
+
 class CCharacter;
 class CEntity;
-class CMapBugs;
 
-class CGameWorld
+class CGameWorld : public CGameWorldBase
 {
 public:
-	enum
-	{
-		ENTTYPE_PROJECTILE = 0,
-		ENTTYPE_LASER,
-		ENTTYPE_DOOR,
-		ENTTYPE_DRAGGER,
-		ENTTYPE_LIGHT,
-		ENTTYPE_GUN,
-		ENTTYPE_PLASMA,
-		ENTTYPE_PICKUP,
-		ENTTYPE_FLAG,
-		ENTTYPE_CHARACTER,
-		NUM_ENTTYPES
-	};
-
-	CWorldCore m_Core;
 	CTeamsCore m_Teams;
 
 	CGameWorld();
 	~CGameWorld();
-	void Init(CCollision *pCollision, CTuningParams *pTuningList, const CMapBugs *pMapBugs);
+	void Init(CCollision *pCollision, CTuningParams *pTuningList, const CMapBugs *pMapBugs) override;
 
-	CEntity *FindFirst(int Type);
-	CEntity *FindLast(int Type);
-	int FindEntities(vec2 Pos, float Radius, CEntity **ppEnts, int Max, int Type);
-	CCharacter *IntersectCharacter(vec2 Pos0, vec2 Pos1, float Radius, vec2 &NewPos, const CCharacter *pNotThis = nullptr, int CollideWith = -1, const CCharacter *pThisOnly = nullptr);
-	CEntity *IntersectEntity(vec2 Pos0, vec2 Pos1, float Radius, int Type, vec2 &NewPos, const CEntity *pNotThis = nullptr, int CollideWith = -1, const CEntity *pThisOnly = nullptr);
-	void InsertEntity(CEntity *pEntity, bool Last = false);
-	void RemoveEntity(CEntity *pEntity);
+	void InsertEntity(CEntityBase *pEntity, bool Last = false);
+	void RemoveEntity(CEntityBase *pEntity) override;
 	void RemoveCharacter(CCharacter *pChar);
-	void Tick();
+	void Tick() override;
 
 	// DDRace
-	void ReleaseHooked(int ClientId);
-	std::vector<CCharacter *> IntersectedCharacters(vec2 Pos0, vec2 Pos1, float Radius, const CEntity *pNotThis = nullptr);
 
 	int m_GameTick;
 
 	// getter for server variables
 	int GameTick() const { return m_GameTick; }
 	int GameTickSpeed() const { return SERVER_TICK_SPEED; }
-	const CCollision *Collision() const { return m_pCollision; }
-	CCollision *Collision() { return m_pCollision; }
 	CTeamsCore *Teams() { return &m_Teams; }
-	std::vector<SSwitchers> &Switchers() { return m_Core.m_vSwitchers; }
 	CEntity *GetEntity(int Id, int EntityType);
 	CCharacter *GetCharacterById(int Id) { return (Id >= 0 && Id < MAX_CLIENTS) ? m_apCharacters[Id] : nullptr; }
 
@@ -100,14 +72,6 @@ public:
 	void NetObjEnd();
 	void CopyWorld(CGameWorld *pFrom);
 	CEntity *FindMatch(int ObjId, int ObjType, const void *pObjData);
-	void Clear();
-
-	const CTuningParams *TuningList() const { return m_pTuningList; }
-	CTuningParams *TuningList() { return m_pTuningList; }
-	const CTuningParams *GlobalTuning() const { return &TuningList()[0]; }
-	CTuningParams *GlobalTuning() { return &TuningList()[0]; }
-	const CTuningParams *GetTuning(int i) const { return &TuningList()[i]; }
-	CTuningParams *GetTuning(int i) { return &TuningList()[i]; }
 
 	bool EmulateBug(int Bug) const;
 
@@ -140,16 +104,13 @@ public:
 	void CreatePredictedDamageIndEvent(vec2 Pos, float Angle, int Amount, int Id = -1);
 
 private:
-	void RemoveEntities();
-
-	CEntity *m_pNextTraverseEntity = nullptr;
-	CEntity *m_apFirstEntityTypes[NUM_ENTTYPES];
+	void RemoveEntities() override;
 
 	CCharacter *m_apCharacters[MAX_CLIENTS];
 
-	CCollision *m_pCollision;
-	CTuningParams *m_pTuningList;
 	const CMapBugs *m_pMapBugs;
+
+	bool NoWeakHookAndBounce() override;
 };
 
 class CCharOrder

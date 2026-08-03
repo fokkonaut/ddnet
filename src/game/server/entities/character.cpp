@@ -29,7 +29,9 @@ MACRO_ALLOC_POOL_ID_IMPL(CCharacter, MAX_CLIENTS)
 
 // Character, "physical" player's part
 CCharacter::CCharacter(CGameWorld *pWorld, CNetObj_PlayerInput LastInput) :
-	CEntity(pWorld, CGameWorld::ENTTYPE_CHARACTER, false, vec2(0, 0), CCharacterCore::PhysicalSize())
+	// most-derived: has to initialize CEntityBase explicitly, see virtual inheritance
+	CEntityBase(pWorld, CGameWorld::ENTTYPE_CHARACTER, vec2(0, 0), CCharacterCore::PhysicalSize()),
+	CEntity(false)
 {
 	m_Health = 0;
 	m_Armor = 0;
@@ -331,7 +333,7 @@ void CCharacter::HandleNinja()
 
 		// check if we Hit anything along the way
 		{
-			CEntity *apEnts[MAX_CLIENTS];
+			CEntityBase *apEnts[MAX_CLIENTS];
 			float Radius = GetProximityRadius() * 2.0f;
 			int Num = GameServer()->m_World.FindEntities(OldPos, Radius, apEnts, MAX_CLIENTS, CGameWorld::ENTTYPE_CHARACTER);
 
@@ -341,7 +343,7 @@ void CCharacter::HandleNinja()
 
 			for(int i = 0; i < Num; ++i)
 			{
-				auto *pChr = static_cast<CCharacter *>(apEnts[i]);
+				auto *pChr = dynamic_cast<CCharacter *>(apEnts[i]);
 				if(pChr == this)
 					continue;
 
@@ -510,14 +512,14 @@ void CCharacter::FireWeapon()
 		if(m_Core.m_HammerHitDisabled)
 			break;
 
-		CEntity *apEnts[MAX_CLIENTS];
+		CEntityBase *apEnts[MAX_CLIENTS];
 		int Hits = 0;
 		int Num = GameServer()->m_World.FindEntities(ProjStartPos, GetProximityRadius() * 0.5f, apEnts,
 			MAX_CLIENTS, CGameWorld::ENTTYPE_CHARACTER);
 
 		for(int i = 0; i < Num; ++i)
 		{
-			auto *pTarget = static_cast<CCharacter *>(apEnts[i]);
+			auto *pTarget = dynamic_cast<CCharacter *>(apEnts[i]);
 
 			if((pTarget == this || (pTarget->IsAlive() && !CanCollide(pTarget->GetPlayer()->GetCid()))))
 				continue;
@@ -2156,11 +2158,11 @@ bool CCharacter::TrySetRescue(int RescueMode)
 		bool InHealthPickup = false;
 		if(!m_Core.m_IsInFreeze)
 		{
-			CEntity *apEnts[9];
+			CEntityBase *apEnts[9];
 			int Num = GameWorld()->FindEntities(m_Pos, GetProximityRadius() + CPickup::ms_CollisionExtraSize, apEnts, std::size(apEnts), CGameWorld::ENTTYPE_PICKUP);
 			for(int i = 0; i < Num; ++i)
 			{
-				CPickup *pPickup = static_cast<CPickup *>(apEnts[i]);
+				CPickup *pPickup = dynamic_cast<CPickup *>(apEnts[i]);
 				if(pPickup->Type() == POWERUP_HEALTH)
 				{
 					// This uses a separate variable InHealthPickup instead of setting m_Core.m_IsInFreeze

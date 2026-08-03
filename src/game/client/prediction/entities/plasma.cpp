@@ -10,7 +10,8 @@
 const float PLASMA_ACCEL = 1.1f;
 
 CPlasma::CPlasma(CGameWorld *pGameWorld, int Id, const CLaserData *pData) :
-	CEntity(pGameWorld, CGameWorld::ENTTYPE_PLASMA)
+	CEntityBase(pGameWorld, CGameWorld::ENTTYPE_PLASMA),
+	CEntity(pGameWorld)
 {
 	m_Id = Id;
 
@@ -87,7 +88,7 @@ void CPlasma::Move()
 bool CPlasma::HitCharacter(CCharacter *pTarget)
 {
 	vec2 IntersectPos;
-	CCharacter *pHitPlayer = GameWorld()->IntersectCharacter(
+	CCharacterBase *pHitPlayer = GameWorld()->IntersectCharacter(
 		m_Pos, m_Pos + m_Core, 0.0f, IntersectPos, nullptr, m_ForClientId);
 	if(!pHitPlayer)
 	{

@@ -2657,9 +2657,9 @@ void CGameClient::OnPredict()
 				pChar->Destroy();
 
 	CProjectile *pProjNext = nullptr;
-	for(CProjectile *pProj = (CProjectile *)m_PredictedWorld.FindFirst(CGameWorld::ENTTYPE_PROJECTILE); pProj; pProj = pProjNext)
+	for(CProjectile *pProj = dynamic_cast<CProjectile *>(m_PredictedWorld.FindFirst(CGameWorld::ENTTYPE_PROJECTILE)); pProj; pProj = pProjNext)
 	{
-		pProjNext = (CProjectile *)pProj->TypeNext();
+		pProjNext = dynamic_cast<CProjectile *>(pProj->TypeNext());
 		if(IsOtherTeam(pProj->GetOwner()))
 		{
 			pProj->Destroy();

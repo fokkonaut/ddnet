@@ -14,7 +14,8 @@
 static constexpr int PICKUP_PHYSICS_RADIUS = 14;
 
 CPickup::CPickup(CGameWorld *pGameWorld, int Type, int SubType, int Layer, int Number, int Flags) :
-	CEntity(pGameWorld, CGameWorld::ENTTYPE_PICKUP, true, vec2(0, 0), PICKUP_PHYSICS_RADIUS)
+	CEntityBase(pGameWorld, CGameWorld::ENTTYPE_PICKUP, vec2(0, 0), PICKUP_PHYSICS_RADIUS),
+	CEntity(true)
 {
 	m_Core = vec2(0.0f, 0.0f);
 	m_Type = Type;
@@ -37,11 +38,11 @@ void CPickup::Tick()
 	Move();
 
 	// Check if a player intersected us
-	CEntity *apEnts[MAX_CLIENTS];
+	CEntityBase *apEnts[MAX_CLIENTS];
 	int Num = GameWorld()->FindEntities(m_Pos, GetProximityRadius() + ms_CollisionExtraSize, apEnts, MAX_CLIENTS, CGameWorld::ENTTYPE_CHARACTER);
 	for(int i = 0; i < Num; ++i)
 	{
-		auto *pChr = static_cast<CCharacter *>(apEnts[i]);
+		auto *pChr = dynamic_cast<CCharacter *>(apEnts[i]);
 
 		if(pChr && pChr->IsAlive())
 		{

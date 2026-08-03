@@ -8,7 +8,8 @@
 #include <game/mapitems.h>
 
 CDoor::CDoor(CGameWorld *pGameWorld, int Id, const CLaserData *pData) :
-	CEntity(pGameWorld, CGameWorld::ENTTYPE_DOOR)
+	CEntityBase(pGameWorld, CGameWorld::ENTTYPE_DOOR),
+	CEntity(pGameWorld)
 {
 	m_Id = Id;
 	m_Active = false;

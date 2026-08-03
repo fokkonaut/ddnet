@@ -24,7 +24,8 @@ CProjectile::CProjectile(
 	int SoundImpact,
 	int Layer,
 	int Number) :
-	CEntity(pGameWorld, CGameWorld::ENTTYPE_PROJECTILE)
+	CEntityBase(pGameWorld, CGameWorld::ENTTYPE_PROJECTILE),
+	CEntity(pGameWorld)
 {
 	m_Type = Type;
 	m_Pos = Pos;
@@ -83,7 +84,7 @@ void CProjectile::Tick()
 	int Collide = Collision()->IntersectLine(PrevPos, CurPos, &ColPos, &NewPos);
 	CCharacter *pOwnerChar = GameWorld()->GetCharacterById(m_Owner);
 
-	CCharacter *pTargetChr = GameWorld()->IntersectCharacter(PrevPos, ColPos, m_Freeze ? 1.0f : 6.0f, ColPos, pOwnerChar, m_Owner);
+	CCharacter *pTargetChr = dynamic_cast<CCharacter *>(GameWorld()->IntersectCharacter(PrevPos, ColPos, m_Freeze ? 1.0f : 6.0f, ColPos, pOwnerChar, m_Owner));
 
 	if(GameWorld()->m_WorldConfig.m_IsSolo && !(m_Type == WEAPON_SHOTGUN && GameWorld()->m_WorldConfig.m_IsDDRace))
 		pTargetChr = nullptr;
@@ -113,11 +114,11 @@ void CProjectile::Tick()
 		}
 		else if(m_Freeze)
 		{
-			CEntity *apEnts[MAX_CLIENTS];
+			CEntityBase *apEnts[MAX_CLIENTS];
 			int Num = GameWorld()->FindEntities(CurPos, 1.0f, apEnts, MAX_CLIENTS, CGameWorld::ENTTYPE_CHARACTER);
 			for(int i = 0; i < Num; ++i)
 			{
-				auto *pChr = static_cast<CCharacter *>(apEnts[i]);
+				auto *pChr = dynamic_cast<CCharacter *>(apEnts[i]);
 				if(pChr && (m_Layer != LAYER_SWITCH || (m_Layer == LAYER_SWITCH && m_Number > 0 && m_Number < (int)Switchers().size() && Switchers()[m_Number].m_aStatus[pChr->Team()])))
 					pChr->Freeze();
 			}
@@ -169,7 +170,8 @@ void CProjectile::SetBouncing(int Value)
 }
 
 CProjectile::CProjectile(CGameWorld *pGameWorld, int Id, const CProjectileData *pProj) :
-	CEntity(pGameWorld, CGameWorld::ENTTYPE_PROJECTILE)
+	CEntityBase(pGameWorld, CGameWorld::ENTTYPE_PROJECTILE),
+	CEntity(pGameWorld)
 {
 	m_Pos = pProj->m_StartPos;
 	m_Direction = pProj->m_StartVel;

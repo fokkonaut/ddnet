@@ -15,7 +15,8 @@
 #include <game/server/teams.h>
 
 CGun::CGun(CGameWorld *pGameWorld, vec2 Pos, bool Freeze, bool Explosive, int Layer, int Number) :
-	CEntity(pGameWorld, CGameWorld::ENTTYPE_LASER, true)
+	CEntityBase(pGameWorld, CGameWorld::ENTTYPE_LASER),
+	CEntity(true)
 {
 	m_Core = vec2(0.0f, 0.0f);
 	m_Pos = Pos;
@@ -47,7 +48,7 @@ void CGun::Tick()
 void CGun::Fire()
 {
 	// Create a list of players who are in the range of the turret
-	CEntity *apPlayersInRange[MAX_CLIENTS];
+	CEntityBase *apPlayersInRange[MAX_CLIENTS];
 	std::fill(std::begin(apPlayersInRange), std::end(apPlayersInRange), nullptr);
 
 	int NumPlayersInRange = GameServer()->m_World.FindEntities(m_Pos, g_Config.m_SvPlasmaRange,
@@ -63,7 +64,7 @@ void CGun::Fire()
 
 	for(int i = 0; i < NumPlayersInRange; i++)
 	{
-		CCharacter *pTarget = static_cast<CCharacter *>(apPlayersInRange[i]);
+		CCharacter *pTarget = dynamic_cast<CCharacter *>(apPlayersInRange[i]);
 		const int &TargetTeam = pTarget->Team();
 		// Do not fire at super players
 		if(TargetTeam == TEAM_SUPER)

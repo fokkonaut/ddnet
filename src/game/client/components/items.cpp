@@ -479,7 +479,7 @@ void CItems::OnRender()
 
 	if(UsePredicted)
 	{
-		for(auto *pProj = (CProjectile *)GameClient()->m_PrevPredictedWorld.FindFirst(CGameWorld::ENTTYPE_PROJECTILE); pProj; pProj = (CProjectile *)pProj->NextEntity())
+		for(auto *pProj = dynamic_cast<CProjectile *>(GameClient()->m_PrevPredictedWorld.FindFirst(CGameWorld::ENTTYPE_PROJECTILE)); pProj; pProj = dynamic_cast<CProjectile *>(pProj->TypeNext()))
 		{
 			if(!IsSuper && pProj->m_Number > 0 && pProj->m_Number < (int)aSwitchers.size() && !aSwitchers[pProj->m_Number].m_aStatus[SwitcherTeam] && (pProj->m_Explosive ? BlinkingProjEx : BlinkingProj))
 				continue;
@@ -487,9 +487,9 @@ void CItems::OnRender()
 			CProjectileData Data = pProj->GetData();
 			if(!ScreenRectProjectile.Inside(Data.m_StartPos))
 				continue;
-			RenderProjectile(&Data, pProj->GetId());
+			RenderProjectile(&Data, pProj->GetId().value_or(-1));
 		}
-		for(CEntity *pEnt = GameClient()->m_PrevPredictedWorld.FindFirst(CGameWorld::ENTTYPE_LASER); pEnt; pEnt = pEnt->NextEntity())
+		for(CEntityBase *pEnt = GameClient()->m_PrevPredictedWorld.FindFirst(CGameWorld::ENTTYPE_LASER); pEnt; pEnt = pEnt->TypeNext())
 		{
 			auto *const pLaser = dynamic_cast<CLaser *>(pEnt);
 			if(!pLaser || pLaser->GetOwner() < 0 || !GameClient()->m_aClients[pLaser->GetOwner()].m_IsPredictedLocal)
@@ -499,14 +499,14 @@ void CItems::OnRender()
 				continue;
 			RenderLaser(&Data, true);
 		}
-		for(auto *pPickup = (CPickup *)GameClient()->m_PrevPredictedWorld.FindFirst(CGameWorld::ENTTYPE_PICKUP); pPickup; pPickup = (CPickup *)pPickup->NextEntity())
+		for(auto *pPickup = dynamic_cast<CPickup *>(GameClient()->m_PrevPredictedWorld.FindFirst(CGameWorld::ENTTYPE_PICKUP)); pPickup; pPickup = dynamic_cast<CPickup *>(pPickup->TypeNext()))
 		{
 			if(!IsSuper && pPickup->m_Layer == LAYER_SWITCH && pPickup->m_Number > 0 && pPickup->m_Number < (int)aSwitchers.size() && !aSwitchers[pPickup->m_Number].m_aStatus[SwitcherTeam] && BlinkingPickup)
 				continue;
 
 			if(pPickup->InDDNetTile())
 			{
-				if(auto *pPrev = (CPickup *)GameClient()->m_PrevPredictedWorld.GetEntity(pPickup->GetId(), CGameWorld::ENTTYPE_PICKUP))
+				if(auto *pPrev = (CPickup *)GameClient()->m_PrevPredictedWorld.GetEntity(pPickup->GetId().value_or(-1), CGameWorld::ENTTYPE_PICKUP))
 				{
 					CNetObj_Pickup Data, Prev;
 					pPickup->FillInfo(&Data);

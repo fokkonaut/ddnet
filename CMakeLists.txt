@@ -2315,6 +2315,12 @@ set_src(GAME_SHARED GLOB src/game
   prng.cpp
   prng.h
   race_state.h
+  shared/entities/character.cpp
+  shared/entities/character.h
+  shared/entity.cpp
+  shared/entity.h
+  shared/gameworld.cpp
+  shared/gameworld.h
   team_state.h
   teamscore.cpp
   teamscore.h

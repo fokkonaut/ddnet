@@ -13,7 +13,8 @@
 #include <game/mapitems.h>
 
 CLaser::CLaser(CGameWorld *pGameWorld, vec2 Pos, vec2 Direction, float StartEnergy, int Owner, int Type) :
-	CEntity(pGameWorld, CGameWorld::ENTTYPE_LASER)
+	CEntityBase(pGameWorld, CGameWorld::ENTTYPE_LASER),
+	CEntity(pGameWorld)
 {
 	m_Pos = Pos;
 	m_Owner = Owner;
@@ -39,9 +40,9 @@ bool CLaser::HitCharacter(vec2 From, vec2 To)
 	bool DontHitSelf = (g_Config.m_SvOldLaser || !GameWorld()->m_WorldConfig.m_IsDDRace) || (m_Bounces == 0);
 
 	if(pOwnerChar ? (!pOwnerChar->LaserHitDisabled() && m_Type == WEAPON_LASER) || (!pOwnerChar->ShotgunHitDisabled() && m_Type == WEAPON_SHOTGUN) : g_Config.m_SvHit)
-		pHit = GameWorld()->IntersectCharacter(m_Pos, To, 0.f, At, DontHitSelf ? pOwnerChar : nullptr, m_Owner);
+		pHit = dynamic_cast<CCharacter *>(GameWorld()->IntersectCharacter(m_Pos, To, 0.f, At, DontHitSelf ? pOwnerChar : nullptr, m_Owner));
 	else
-		pHit = GameWorld()->IntersectCharacter(m_Pos, To, 0.f, At, DontHitSelf ? pOwnerChar : nullptr, m_Owner, pOwnerChar);
+		pHit = dynamic_cast<CCharacter *>(GameWorld()->IntersectCharacter(m_Pos, To, 0.f, At, DontHitSelf ? pOwnerChar : nullptr, m_Owner, pOwnerChar));
 
 	if(!pHit || (pHit == pOwnerChar && g_Config.m_SvOldLaser) || (pHit != pOwnerChar && pOwnerChar ? (pOwnerChar->LaserHitDisabled() && m_Type == WEAPON_LASER) || (pOwnerChar->ShotgunHitDisabled() && m_Type == WEAPON_SHOTGUN) : !g_Config.m_SvHit))
 		return false;
@@ -149,7 +150,7 @@ void CLaser::DoBounce()
 			if(m_Bounces > BounceNum)
 				m_Energy = -1;
 
-			GameWorld()->CreatePredictedSound(m_Pos, SOUND_LASER_BOUNCE, m_Id);
+			GameWorld()->CreatePredictedSound(m_Pos, SOUND_LASER_BOUNCE, m_Id.value_or(-1));
 		}
 	}
 	else
@@ -180,7 +181,8 @@ void CLaser::Tick()
 }
 
 CLaser::CLaser(CGameWorld *pGameWorld, int Id, CLaserData *pLaser) :
-	CEntity(pGameWorld, CGameWorld::ENTTYPE_LASER)
+	CEntityBase(pGameWorld, CGameWorld::ENTTYPE_LASER),
+	CEntity(pGameWorld)
 {
 	m_Pos = pLaser->m_To;
 	m_From = pLaser->m_From;

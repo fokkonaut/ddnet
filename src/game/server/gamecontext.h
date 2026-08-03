@@ -242,7 +242,7 @@ public:
 	CPlayer *FindPlayerByName(const char *pName);
 	std::optional<int> FindClientIdByName(const char *pName) const;
 	bool EmulateBug(int Bug) const;
-	std::vector<SSwitchers> &Switchers() { return m_World.m_Core.m_vSwitchers; }
+	std::vector<SSwitchers> &Switchers() { return m_World.Switchers(); }
 
 	// voting
 	void StartVote(const char *pDesc, const char *pCommand, const char *pReason, const char *pSixupDesc);

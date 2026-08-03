@@ -6,6 +6,7 @@
 #include <game/race_state.h>
 #include <game/server/entity.h>
 #include <game/server/save.h>
+#include <game/shared/entities/character.h>
 
 class CPlayer;
 class CGameTeams;
@@ -24,7 +25,7 @@ enum
 	FAKETUNE_NOHAMMER = 1 << 6,
 };
 
-class CCharacter : public CEntity
+class CCharacter : public CEntity, public CCharacterBase
 {
 	MACRO_ALLOC_POOL_ID()
 

@@ -15,7 +15,8 @@
 #include <game/server/player.h>
 
 CLaser::CLaser(CGameWorld *pGameWorld, vec2 Pos, vec2 Direction, float StartEnergy, int Owner, int Type) :
-	CEntity(pGameWorld, CGameWorld::ENTTYPE_LASER, true)
+	CEntityBase(pGameWorld, CGameWorld::ENTTYPE_LASER),
+	CEntity(true)
 {
 	m_Pos = Pos;
 	m_Owner = Owner;
@@ -50,9 +51,9 @@ bool CLaser::HitCharacter(vec2 From, vec2 To)
 	bool pDontHitSelf = g_Config.m_SvOldLaser || (m_Bounces == 0 && !m_WasTele);
 
 	if(pOwnerChar ? (!pOwnerChar->LaserHitDisabled() && m_Type == WEAPON_LASER) || (!pOwnerChar->ShotgunHitDisabled() && m_Type == WEAPON_SHOTGUN) : g_Config.m_SvHit)
-		pHit = GameWorld()->IntersectCharacter(m_Pos, To, 0.f, At, pDontHitSelf ? pOwnerChar : nullptr, m_Owner);
+		pHit = dynamic_cast<CCharacter *>(GameWorld()->IntersectCharacter(m_Pos, To, 0.f, At, pDontHitSelf ? pOwnerChar : nullptr, m_Owner));
 	else
-		pHit = GameWorld()->IntersectCharacter(m_Pos, To, 0.f, At, pDontHitSelf ? pOwnerChar : nullptr, m_Owner, pOwnerChar);
+		pHit = dynamic_cast<CCharacter *>(GameWorld()->IntersectCharacter(m_Pos, To, 0.f, At, pDontHitSelf ? pOwnerChar : nullptr, m_Owner, pOwnerChar));
 
 	if(!pHit || !m_InteractState.CanHit(GameServer(), pHit->GetPlayer()->GetCid()))
 		return false;
@@ -204,9 +205,9 @@ void CLaser::DoBounce()
 		vec2 At;
 		CCharacter *pHit;
 		if(pOwnerChar ? (!pOwnerChar->LaserHitDisabled() && m_Type == WEAPON_LASER) : g_Config.m_SvHit)
-			pHit = GameServer()->m_World.IntersectCharacter(m_Pos, To, 0.f, At, DontHitSelf ? pOwnerChar : nullptr, m_Owner);
+			pHit = dynamic_cast<CCharacter *>(GameServer()->m_World.IntersectCharacter(m_Pos, To, 0.f, At, DontHitSelf ? pOwnerChar : nullptr, m_Owner));
 		else
-			pHit = GameServer()->m_World.IntersectCharacter(m_Pos, To, 0.f, At, DontHitSelf ? pOwnerChar : nullptr, m_Owner, pOwnerChar);
+			pHit = dynamic_cast<CCharacter *>(GameServer()->m_World.IntersectCharacter(m_Pos, To, 0.f, At, DontHitSelf ? pOwnerChar : nullptr, m_Owner, pOwnerChar));
 
 		if(pHit)
 			Found = GetNearestAirPosPlayer(pHit->m_Pos, &PossiblePos);
