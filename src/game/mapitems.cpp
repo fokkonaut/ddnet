@@ -100,6 +100,7 @@ bool IsValidSwitchTile(int Index)
 	return (
 		Index == TILE_JUMP ||
 		Index == TILE_FREEZE ||
+		Index == TILE_UNFREEZE ||
 		Index == TILE_DFREEZE ||
 		Index == TILE_DUNFREEZE ||
 		Index == TILE_LFREEZE ||
@@ -118,6 +119,7 @@ bool IsValidSwitchTile(int Index)
 bool IsSwitchTileFlagsUsed(int Index)
 {
 	return Index != TILE_FREEZE &&
+	       Index != TILE_UNFREEZE &&
 	       Index != TILE_DFREEZE &&
 	       Index != TILE_DUNFREEZE;
 }
