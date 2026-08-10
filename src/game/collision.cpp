@@ -810,6 +810,9 @@ int CCollision::MoverSpeed(int x, int y, vec2 *pSpeed) const
 	int aLayers[] = { LAYER_GAME, LAYER_FRONT, LAYER_SWITCH };
 	for(size_t i = 0; i < std::size(aLayers); i++)
 	{
+		Index = 0;
+		Flags = 0;
+		Speed = 0;
 		if(aLayers[i] == LAYER_SWITCH && m_pSwitch)
 		{
 			Index = m_pSwitch[MapIndex].m_Type;
