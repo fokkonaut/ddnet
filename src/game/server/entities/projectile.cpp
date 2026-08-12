@@ -261,31 +261,6 @@ void CProjectile::Tick()
 	{
 		m_StartTick = Server()->Tick();
 	}
-
-	if(m_Owner == -1 && m_LifeSpan == -2)
-	{
-		vec2 Core;
-		if(GameServer()->Collision()->MoverSpeed(CurPos.x, CurPos.y, &Core))
-		{
-			m_StartTick = Server()->Tick();
-			m_Direction = normalize(Core);
-
-			// Snap the axis perpendicular to travel to the tile's centerline
-			int Tx = std::clamp((int)CurPos.x / 32, 0, GameServer()->Collision()->GetWidth() - 1);
-			int Ty = std::clamp((int)CurPos.y / 32, 0, GameServer()->Collision()->GetHeight() - 1);
-			float CenterX = Tx * 32.0f + 16.0f;
-			float CenterY = Ty * 32.0f + 16.0f;
-
-			if(m_Direction.x == 0.0f) // moving vertically -> lock X
-				CurPos.x = CenterX;
-			else if(m_Direction.y == 0.0f) // moving horizontally -> lock Y
-				CurPos.y = CenterY;
-			else
-				CurPos = vec2(CenterX, CenterY); // fallback, shouldn't normally happen
-
-			m_Pos = CurPos;
-		}
-	}
 }
 
 void CProjectile::TickPaused()
