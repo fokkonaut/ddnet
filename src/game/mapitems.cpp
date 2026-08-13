@@ -59,7 +59,6 @@ bool IsValidFrontTile(int Index)
 bool IsValidTeleTile(int Index)
 {
 	return (
-		Index == TILE_AIR ||
 		Index == TILE_TELEINEVIL ||
 		Index == TILE_TELEINWEAPON ||
 		Index == TILE_TELEINHOOK ||
