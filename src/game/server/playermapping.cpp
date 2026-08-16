@@ -124,6 +124,7 @@ void CPlayerMapping::CPlayerMap::InitPlayer(CSixupCfg SixupCfg)
 	for(int i = 0; i < MAX_CLIENTS; i++)
 		m_pReverseMap[i] = -1;
 
+	m_NumReserved = 0;
 	const bool PlayerMappingRequired = !m_pPlayerMapping->Server()->ClientSupportsServerMaxClients(m_ClientId);
 	if(PlayerMappingRequired)
 	{
@@ -527,14 +528,13 @@ void CPlayerMapping::CPlayerMap::CycleSeeOthers()
 	{
 		if(!m_pPlayerMapping->GameServer()->m_apPlayers[i] || m_aWasSeeOthers[i])
 			continue;
+		if(Added >= Size)
+			break;
 
 		Add(MapId, i);
 		m_aWasSeeOthers[i] = true;
 		Added++;
 		MapId--;
-
-		if(Added >= Size)
-			break;
 	}
 
 	m_NumSeeOthers = Added;

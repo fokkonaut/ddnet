@@ -2788,7 +2788,8 @@ void CGameContext::OnIsDDNetLegacyNetMessage(const CNetMsg_Cl_IsDDNetLegacy *pMs
 		DDNetVersion = VERSION_DDRACE;
 	}
 	Server()->SetClientDDNetVersion(ClientId, DDNetVersion);
-	OnClientDDNetVersionKnown(ClientId);
+	if(OnClientDDNetVersionKnown(ClientId))
+		return;
 	// Initial identification, currently identified as 16p client, make sure we allow 64 slots
 	CPlayerMapping::CSixupCfg SixupCfg;
 	SixupCfg.m_ClearSlots = true;
