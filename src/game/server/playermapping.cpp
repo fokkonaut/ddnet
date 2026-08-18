@@ -153,13 +153,15 @@ void CPlayerMapping::CPlayerMap::InitPlayer(CSixupCfg SixupCfg)
 			// see others
 			UpdateSeeOthers();
 		}
+	}
 
-		// Breaks with more than `MapSize` tees from the same ip, but not a problem on official servers.
-		if(NextFreeId < MapSize())
-		{
-			m_aReserved[m_ClientId] = true;
-			Add(NextFreeId, m_ClientId);
-		}
+	// Breaks with more than `MapSize` tees from the same ip, but not a problem on official servers.
+	// Required for other player maps, even when this specific one doesn't need playermapping and supports max_clients
+	const bool NextIdValid = NextFreeId < LEGACY_MAX_CLIENTS;
+	if(NextFreeId < MapSize() && NextIdValid)
+	{
+		m_aReserved[m_ClientId] = true;
+		Add(NextFreeId, m_ClientId);
 	}
 
 	for(int i = 0; i < MAX_CLIENTS; i++)
@@ -179,7 +181,7 @@ void CPlayerMapping::CPlayerMap::InitPlayer(CSixupCfg SixupCfg)
 		}
 
 		// update other same ip players with our info
-		if(NextFreeId < m_pPlayerMapping->m_aMap[i].MapSize())
+		if(NextIdValid && NextFreeId < m_pPlayerMapping->m_aMap[i].MapSize())
 		{
 			m_pPlayerMapping->m_aMap[i].m_aReserved[m_ClientId] = true;
 			m_pPlayerMapping->m_aMap[i].Add(NextFreeId, m_ClientId);
