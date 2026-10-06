@@ -182,11 +182,79 @@ void CPlayerMapping::CPlayerMap::InitPlayer(CSixupCfg SixupCfg)
 			Add(m_pPlayerMapping->m_aMap[i].m_pReverseMap[i], i);
 		}
 
-		// update other same ip players with our info
+		// always update other same ip players with our info
 		if(NextIdValid && NextFreeId < m_pPlayerMapping->m_aMap[i].MapSize())
 		{
 			m_pPlayerMapping->m_aMap[i].m_aReserved[m_ClientId] = true;
 			m_pPlayerMapping->m_aMap[i].Add(NextFreeId, m_ClientId);
+		}
+	}
+
+	// This is only required for DDNet clients with 128p support connecting via 0.7 protocol, as they do not go through playermapping
+	// Because they can handle updating local info during timeout protection, as the following local client id check was never implemented:
+	// https://github.com/teeworlds/teeworlds/blob/5d682733e482950f686663c129adc4b751c8d790/src/game/client/gameclient.cpp#L893-L898
+	// `sv_max_clients 64` will disable playermapping for vanilla 0.7 too now.
+	// Messages are sent as m_Silent, because server keeps sending join and leave chat message.
+	{
+		const bool IsDDNetSixupSupported = m_pPlayerMapping->Server()->IsSixup(m_ClientId) && !PlayerMappingRequired;
+
+		// new info for others
+		protocol7::CNetMsg_Sv_ClientInfo NewClientInfoMsg;
+		NewClientInfoMsg.m_ClientId = m_ClientId;
+		NewClientInfoMsg.m_Local = 0;
+		NewClientInfoMsg.m_Team = Player()->GetTeam();
+		NewClientInfoMsg.m_pName = m_pPlayerMapping->Server()->ClientName(m_ClientId);
+		NewClientInfoMsg.m_pClan = m_pPlayerMapping->Server()->ClientClan(m_ClientId);
+		NewClientInfoMsg.m_Country = m_pPlayerMapping->Server()->ClientCountry(m_ClientId);
+		NewClientInfoMsg.m_Silent = 1;
+
+		for(int p = 0; p < protocol7::NUM_SKINPARTS; p++)
+		{
+			NewClientInfoMsg.m_apSkinPartNames[p] = Player()->TeeInfos().m_aaSkinPartNames[p];
+			NewClientInfoMsg.m_aUseCustomColors[p] = Player()->TeeInfos().m_aUseCustomColors[p];
+			NewClientInfoMsg.m_aSkinPartColors[p] = Player()->TeeInfos().m_aSkinPartColors[p];
+		}
+
+		// update client infos (others before local)
+		for(int i = 0; i < m_pPlayerMapping->Server()->MaxClients(); ++i)
+		{
+			if(i == m_ClientId || !m_pPlayerMapping->GameServer()->m_apPlayers[i] || !m_pPlayerMapping->Server()->ClientIngame(i))
+				continue;
+
+			CPlayer *pPlayer = m_pPlayerMapping->GameServer()->m_apPlayers[i];
+
+			const bool IsOtherDDNetSixupSupported = m_pPlayerMapping->Server()->IsSixup(i) && m_pPlayerMapping->Server()->ClientSupportsServerMaxClients(i);
+			if(IsOtherDDNetSixupSupported)
+				m_pPlayerMapping->Server()->SendPackMsg(&NewClientInfoMsg, MSGFLAG_VITAL | MSGFLAG_NORECORD, i);
+
+			if(IsDDNetSixupSupported)
+			{
+				// existing infos for new player
+				protocol7::CNetMsg_Sv_ClientInfo ClientInfoMsg;
+				ClientInfoMsg.m_ClientId = i;
+				ClientInfoMsg.m_Local = 0;
+				ClientInfoMsg.m_Team = pPlayer->GetTeam();
+				ClientInfoMsg.m_pName = m_pPlayerMapping->Server()->ClientName(i);
+				ClientInfoMsg.m_pClan = m_pPlayerMapping->Server()->ClientClan(i);
+				ClientInfoMsg.m_Country = m_pPlayerMapping->Server()->ClientCountry(i);
+				ClientInfoMsg.m_Silent = 1;
+
+				for(int p = 0; p < protocol7::NUM_SKINPARTS; p++)
+				{
+					ClientInfoMsg.m_apSkinPartNames[p] = pPlayer->TeeInfos().m_aaSkinPartNames[p];
+					ClientInfoMsg.m_aUseCustomColors[p] = pPlayer->TeeInfos().m_aUseCustomColors[p];
+					ClientInfoMsg.m_aSkinPartColors[p] = pPlayer->TeeInfos().m_aSkinPartColors[p];
+				}
+
+				m_pPlayerMapping->Server()->SendPackMsg(&ClientInfoMsg, MSGFLAG_VITAL | MSGFLAG_NORECORD, m_ClientId);
+			}
+		}
+
+		// local info
+		if(IsDDNetSixupSupported)
+		{
+			NewClientInfoMsg.m_Local = 1;
+			m_pPlayerMapping->Server()->SendPackMsg(&NewClientInfoMsg, MSGFLAG_VITAL | MSGFLAG_NORECORD, m_ClientId);
 		}
 	}
 }
@@ -606,7 +674,7 @@ int CPlayerMapping::CPlayerMap::MaxNumSeeOthers()
 
 void CPlayerMapping::CPlayerMap::UpdateSeeOthers() const
 {
-	if(!m_pPlayerMapping->Server()->IsSixup(m_ClientId))
+	if(!m_pPlayerMapping->Server()->IsSixup(m_ClientId) || m_pPlayerMapping->Server()->ClientSupportsServerMaxClients(m_ClientId))
 		return;
 
 	int SeeOthersId = m_pPlayerMapping->SeeOthersId(m_ClientId);
