@@ -3013,11 +3013,9 @@ int CServer::GetMaxClients(int ClientId) const
 	if(ClientId == SERVER_DEMO_CLIENT)
 		return MAX_CLIENTS;
 
-	if(m_aClients[ClientId].m_Sixup)
-		return LEGACY_MAX_CLIENTS;
 	if(m_aClients[ClientId].m_DDNetVersion >= VERSION_DDNET_128_PLAYERS)
 		return MAX_CLIENTS;
-	if(m_aClients[ClientId].m_DDNetVersion >= VERSION_DDNET_OLD)
+	if(IsSixup(ClientId) || m_aClients[ClientId].m_DDNetVersion >= VERSION_DDNET_OLD)
 		return LEGACY_MAX_CLIENTS;
 	return VANILLA_MAX_CLIENTS;
 }
@@ -3029,8 +3027,10 @@ bool CServer::ClientSupportsServerMaxClients(int ClientId) const
 		return true;
 
 	// We can use `m_NetServer.MaxClients()` instead of `MAX_CLIENTS` here because it can't be changed ingame.
-	// The playermapping code currently relies on sixup (0.7) clients taking the route through playermapping.
-	return GetMaxClients(ClientId) >= m_NetServer.MaxClients() && !m_aClients[ClientId].m_Sixup;
+	// This local client id check was luckily never implemented in DDNet's 0.7 translation layer:
+	// (for timeout protection, otherwise playermapping is required)
+	// https://github.com/teeworlds/teeworlds/blob/5d682733e482950f686663c129adc4b751c8d790/src/game/client/gameclient.cpp#L893-L898
+	return GetMaxClients(ClientId) >= m_NetServer.MaxClients() && (!IsSixup(ClientId) || m_aClients[ClientId].m_DDNetVersion >= VERSION_DDNET_SIXUP_UPDATE_LOCAL_INFO);
 }
 
 void CServer::PumpNetwork()
