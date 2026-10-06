@@ -199,12 +199,10 @@ void CDragger::Snap(int SnappingClient)
 	if(DraggerBeamUsingDraggerId(SnappingClient).has_value())
 		return;
 
-	int SnappingClientVersion = GameServer()->GetClientVersion(SnappingClient);
-
 	int Subtype = (m_IgnoreWalls ? 1 : 0) | (std::clamp(round_to_int(m_Strength - 1.f), 0, 2) << 1);
 
 	int StartTick;
-	if(SnappingClientVersion >= VERSION_DDNET_ENTITY_NETOBJS)
+	if(Server()->HasCapability(SnappingClient, CLIENTCAPFLAG_ENTITY_NETOBJS))
 	{
 		StartTick = -1;
 	}
@@ -230,7 +228,7 @@ void CDragger::Snap(int SnappingClient)
 			StartTick = Server()->Tick();
 	}
 
-	GameServer()->SnapLaserObject(CSnapContext(SnappingClientVersion, Server()->IsSixup(SnappingClient), SnappingClient), GetId().value(),
+	GameServer()->SnapLaserObject(CSnapContext(Server()->GetCapabilities(SnappingClient), Server()->IsSixup(SnappingClient), SnappingClient), GetId().value(),
 		m_Pos, m_Pos, StartTick, -1, LASERTYPE_DRAGGER, Subtype, m_Number);
 }
 

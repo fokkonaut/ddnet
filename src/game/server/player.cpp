@@ -351,7 +351,6 @@ void CPlayer::Snap(int SnappingClient)
 	}
 	Server()->SnapNewItem(TranslatedId, m_ClientInfo);
 
-	int SnappingClientVersion = GameServer()->GetClientVersion(SnappingClient);
 	int Latency = SnappingClient == SERVER_DEMO_CLIENT ? m_Latency.m_Min : GameServer()->m_apPlayers[SnappingClient]->m_aCurLatency[m_ClientId];
 	int Score = GameServer()->m_pController->SnapPlayerScore(SnappingClient, this);
 
@@ -360,10 +359,10 @@ void CPlayer::Snap(int SnappingClient)
 		CNetObj_PlayerInfo PlayerInfo = {};
 		PlayerInfo.m_Latency = Latency;
 		PlayerInfo.m_Score = Score;
-		PlayerInfo.m_Local = (int)(m_ClientId == SnappingClient && (m_Paused != PAUSE_PAUSED || SnappingClientVersion >= VERSION_DDNET_OLD));
+		PlayerInfo.m_Local = (int)(m_ClientId == SnappingClient && (m_Paused != PAUSE_PAUSED || Server()->IsIdentifiedDDNet(SnappingClient)));
 		PlayerInfo.m_ClientId = TranslatedId;
 		PlayerInfo.m_Team = m_Team;
-		if(SnappingClientVersion < VERSION_DDNET_INDEPENDENT_SPECTATORS_TEAM)
+		if(!Server()->HasCapability(SnappingClient, CLIENTCAPFLAG_INDEPENDENT_SPECTATORS_TEAM))
 		{
 			// In older versions the SPECTATORS TEAM was also used if the own player is in PAUSE_PAUSED or if any player is in PAUSE_SPEC.
 			PlayerInfo.m_Team = (m_Paused != PAUSE_PAUSED || m_ClientId != SnappingClient) && m_Paused < PAUSE_SPEC ? m_Team : TEAM_SPECTATORS;
@@ -374,7 +373,7 @@ void CPlayer::Snap(int SnappingClient)
 	{
 		protocol7::CNetObj_PlayerInfo PlayerInfo = {};
 		PlayerInfo.m_PlayerFlags = PlayerFlags_SixToSeven(m_PlayerFlags);
-		if(SnappingClientVersion >= VERSION_DDRACE && (m_PlayerFlags & PLAYERFLAG_AIM))
+		if(Server()->IsDDRaceClient(SnappingClient) && (m_PlayerFlags & PLAYERFLAG_AIM))
 			PlayerInfo.m_PlayerFlags |= protocol7::PLAYERFLAG_AIM;
 		if(Server()->IsRconAuthed(m_ClientId) && ((SnappingClient >= 0 && Server()->IsRconAuthed(SnappingClient)) || !Server()->HasAuthHidden(m_ClientId)))
 			PlayerInfo.m_PlayerFlags |= protocol7::PLAYERFLAG_ADMIN;
@@ -559,7 +558,7 @@ void CPlayer::FakeSnap()
 	Server()->SnapNewItem(FakeId, ClientInfo);
 
 	// Support pause feature for vanilla 0.6. Requires local object on client side
-	if(GetClientVersion() >= VERSION_DDNET_OLD || m_Paused != PAUSE_PAUSED)
+	if(Server()->IsIdentifiedDDNet(m_ClientId) || m_Paused != PAUSE_PAUSED)
 		return;
 
 	CNetObj_PlayerInfo PlayerInfo = {};
@@ -645,7 +644,7 @@ void CPlayer::OnPredictedInput(const CNetObj_PlayerInput *pNewInput)
 		m_pCharacter->OnPredictedInput(pNewInput);
 
 	// Magic number when we can hope that client has successfully identified itself
-	if(m_NumInputs == 20 && g_Config.m_SvClientSuggestion[0] != '\0' && GetClientVersion() <= VERSION_DDNET_OLD)
+	if(m_NumInputs == 20 && g_Config.m_SvClientSuggestion[0] != '\0' && !Server()->IsIdentifiedDDNet(m_ClientId))
 		GameServer()->SendBroadcast(g_Config.m_SvClientSuggestion, m_ClientId);
 }
 
@@ -655,7 +654,7 @@ void CPlayer::OnDirectInput(const CNetObj_PlayerInput *pNewInput)
 
 	AfkTimer();
 
-	if(((pNewInput->m_PlayerFlags & PLAYERFLAG_SPEC_CAM) || GetClientVersion() < VERSION_DDNET_PLAYERFLAG_SPEC_CAM) && ((!m_pCharacter && m_Team == TEAM_SPECTATORS) || m_Paused) && m_SpectatorId == SPEC_FREEVIEW)
+	if(((pNewInput->m_PlayerFlags & PLAYERFLAG_SPEC_CAM) || !Server()->HasCapability(m_ClientId, CLIENTCAPFLAG_PLAYERFLAG_SPEC_CAM)) && ((!m_pCharacter && m_Team == TEAM_SPECTATORS) || m_Paused) && m_SpectatorId == SPEC_FREEVIEW)
 		m_ViewPos = vec2(pNewInput->m_TargetX, pNewInput->m_TargetY);
 
 	// check for activity
@@ -792,14 +791,14 @@ bool CPlayer::SetTimerType(int TimerType)
 
 	if(TimerType == TIMERTYPE_GAMETIMER)
 	{
-		if(GetClientVersion() >= VERSION_DDNET_GAMETICK)
+		if(Server()->HasCapability(m_ClientId, CLIENTCAPFLAG_GAMETICK))
 			m_TimerType = TimerType;
 		else
 			return false;
 	}
 	else if(TimerType == TIMERTYPE_GAMETIMER_AND_BROADCAST)
 	{
-		if(GetClientVersion() >= VERSION_DDNET_GAMETICK)
+		if(Server()->HasCapability(m_ClientId, CLIENTCAPFLAG_GAMETICK))
 			m_TimerType = TimerType;
 		else
 		{

@@ -681,9 +681,8 @@ void CGameTeams::SendTeamsState(int ClientId)
 		MsgLegacy.AddInt(Team);
 	}
 
-	int ClientVersion = GameServer()->GetClientVersion(ClientId);
 	Server()->SendMsg(&Msg, MSGFLAG_VITAL, ClientId);
-	if(!Server()->IsSixup(ClientId) && VERSION_DDRACE < ClientVersion && ClientVersion < VERSION_DDNET_MSG_LEGACY)
+	if(!Server()->IsSixup(ClientId) && Server()->IsIdentifiedDDNet(ClientId) && !Server()->HasCapability(ClientId, CLIENTCAPFLAG_MSG_LEGACY))
 	{
 		Server()->SendMsg(&MsgLegacy, MSGFLAG_VITAL, ClientId);
 	}
@@ -735,8 +734,7 @@ int CGameTeams::TeamForClient(int Team, int ClientId) const
 
 bool CGameTeams::ClientSupportsServerNumTeams(int ClientId) const
 {
-	const int ClientVersion = GameServer()->GetClientVersion(ClientId);
-	return ClientVersion >= VERSION_DDNET_128_TEAMS;
+	return Server()->HasCapability(ClientId, CLIENTCAPFLAG_128_TEAMS);
 }
 
 ERaceState CGameTeams::GetDDRaceState(const CPlayer *Player) const
@@ -930,13 +928,13 @@ void CGameTeams::OnFinish(CPlayer *pPlayer, int TimeTicks, const char *pTimestam
 	{
 		for(int i = 0; i < MAX_CLIENTS; i++)
 		{
-			if(GameServer()->m_apPlayers[i] && GameServer()->m_apPlayers[i]->GetClientVersion() >= VERSION_DDRACE)
+			if(GameServer()->m_apPlayers[i] && Server()->IsDDRaceClient(i))
 			{
 				GameServer()->SendRecord(i);
 			}
 		}
 	}
-	if(!NeedToSendNewServerRecord && NeedToSendNewPersonalRecord && pPlayer->GetClientVersion() >= VERSION_DDRACE)
+	if(!NeedToSendNewServerRecord && NeedToSendNewPersonalRecord && Server()->IsDDRaceClient(ClientId))
 	{
 		GameServer()->SendRecord(ClientId);
 	}

@@ -215,6 +215,9 @@ public:
 
 		bool m_Sixup;
 
+		bool m_GotCapabilitiesPacket;
+		int m_Capabilities;
+
 		bool IncludedInServerInfo() const
 		{
 			return m_State != STATE_EMPTY && !m_DebugDummy;
@@ -390,6 +393,7 @@ public:
 	bool TakePreInputBudget(int ClientId);
 	void ProcessClientPacket(CNetChunk *pPacket);
 	void OnNetMsgClientVer(int ClientId, CUuid *pConnectionId, int DDNetVersion, const char *pDDNetVersionStr);
+	void OnNetMsgClientCapabilities(int ClientId, int Version, int Flags);
 	void OnNetMsgInfo(int ClientId, const char *pVersion, const char *pPasswordOrNullptr);
 	void OnNetMsgReady(int ClientId);
 	void OnNetMsgEnterGame(int ClientId);
@@ -549,7 +553,14 @@ public:
 	bool ErrorShutdown() const { return m_aErrorShutdownReason[0] != 0; }
 	void SetErrorShutdown(const char *pReason) override;
 
+	void LegacySetClientCapabilities(int ClientId, int ClientVersion) override;
+	bool HasCapability(int ClientId, int Flags) const override { return ClientId == SERVER_DEMO_CLIENT || (m_aClients[ClientId].m_Capabilities & Flags) == Flags; }
+	int GetCapabilities(int ClientId) const override { return ClientId != SERVER_DEMO_CLIENT ? m_aClients[ClientId].m_Capabilities : CLIENTCAPFLAG_ALL_FLAGS_SET; }
+
+	bool IsDDRaceClient(int ClientId) const override { return ClientId != SERVER_DEMO_CLIENT && m_aClients[ClientId].m_DDNetVersion >= VERSION_DDRACE; }
+	bool IsIdentifiedDDNet(int ClientId) const override { return ClientId != SERVER_DEMO_CLIENT && m_aClients[ClientId].m_DDNetVersion >= VERSION_DDNET_OLD; }
 	bool IsSixup(int ClientId) const override { return ClientId != SERVER_DEMO_CLIENT && m_aClients[ClientId].m_Sixup; }
+
 	int GetMaxClients(int ClientId) const override;
 	bool ClientSupportsServerMaxClients(int ClientId) const override;
 

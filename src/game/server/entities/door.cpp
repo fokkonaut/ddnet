@@ -50,12 +50,10 @@ void CDoor::Snap(int SnappingClient)
 	if((NetworkClipped(SnappingClient, m_Pos) && NetworkClipped(SnappingClient, m_To)) || !GetId().has_value())
 		return;
 
-	int SnappingClientVersion = GameServer()->GetClientVersion(SnappingClient);
-
 	vec2 From;
 	int StartTick;
 
-	if(SnappingClientVersion >= VERSION_DDNET_ENTITY_NETOBJS)
+	if(Server()->HasCapability(SnappingClient, CLIENTCAPFLAG_ENTITY_NETOBJS))
 	{
 		From = m_To;
 		StartTick = -1;
@@ -78,6 +76,6 @@ void CDoor::Snap(int SnappingClient)
 		StartTick = Server()->Tick();
 	}
 
-	GameServer()->SnapLaserObject(CSnapContext(SnappingClientVersion, Server()->IsSixup(SnappingClient), SnappingClient), GetId().value(),
+	GameServer()->SnapLaserObject(CSnapContext(Server()->GetCapabilities(SnappingClient), Server()->IsSixup(SnappingClient), SnappingClient), GetId().value(),
 		m_Pos, From, StartTick, -1, LASERTYPE_DOOR, 0, m_Number);
 }

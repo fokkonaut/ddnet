@@ -379,7 +379,14 @@ public:
 
 	virtual void SendMsgRaw(int ClientId, const void *pData, int Size, int Flags) = 0;
 
+	virtual void LegacySetClientCapabilities(int ClientId, int ClientVersion) = 0;
+	virtual bool HasCapability(int ClientId, int Flags) const = 0;
+	virtual int GetCapabilities(int ClientId) const = 0;
+
+	virtual bool IsDDRaceClient(int ClientId) const = 0;
+	virtual bool IsIdentifiedDDNet(int ClientId) const = 0;
 	virtual bool IsSixup(int ClientId) const = 0;
+
 	virtual int GetMaxClients(int ClientId) const = 0;
 	virtual bool ClientSupportsServerMaxClients(int ClientId) const = 0;
 };

@@ -548,7 +548,7 @@ void CServer::ReconnectClient(int ClientId)
 	dbg_assert(0 <= ClientId && ClientId < MAX_CLIENTS, "Invalid ClientId: %d", ClientId);
 	dbg_assert(m_aClients[ClientId].m_State != CClient::STATE_EMPTY, "Client slot empty: %d", ClientId);
 
-	if(GetClientVersion(ClientId) < VERSION_DDNET_RECONNECT)
+	if(!HasCapability(ClientId, CLIENTCAPFLAG_RECONNECT))
 	{
 		RedirectClient(ClientId, m_NetServer.Address().port);
 		return;
@@ -572,7 +572,7 @@ void CServer::RedirectClient(int ClientId, int Port)
 	dbg_assert(0 <= ClientId && ClientId < MAX_CLIENTS, "Invalid ClientId: %d", ClientId);
 	dbg_assert(m_aClients[ClientId].m_State != CClient::STATE_EMPTY, "Client slot empty: %d", ClientId);
 
-	bool SupportsRedirect = GetClientVersion(ClientId) >= VERSION_DDNET_REDIRECT;
+	bool SupportsRedirect = HasCapability(ClientId, CLIENTCAPFLAG_REDIRECT);
 
 	log_info("server", "redirecting client, cid=%d port=%d supported=%d", ClientId, Port, SupportsRedirect);
 
@@ -1199,6 +1199,8 @@ int CServer::ClientRejoinCallback(int ClientId, void *pUser, bool Sixup, bool Va
 	pThis->m_aClients[ClientId].m_DDNetVersion = VERSION_NONE;
 	pThis->m_aClients[ClientId].m_GotDDNetVersionPacket = false;
 	pThis->m_aClients[ClientId].m_DDNetVersionSettled = false;
+	pThis->m_aClients[ClientId].m_GotCapabilitiesPacket = false;
+	pThis->m_aClients[ClientId].m_Capabilities = 0;
 
 	pThis->m_aClients[ClientId].Reset();
 	// Keep game slot
@@ -1236,6 +1238,8 @@ int CServer::NewClientNoAuthCallback(int ClientId, void *pUser)
 	pThis->m_aClients[ClientId].m_DDNetVersion = VERSION_NONE;
 	pThis->m_aClients[ClientId].m_GotDDNetVersionPacket = false;
 	pThis->m_aClients[ClientId].m_DDNetVersionSettled = false;
+	pThis->m_aClients[ClientId].m_GotCapabilitiesPacket = false;
+	pThis->m_aClients[ClientId].m_Capabilities = 0;
 	pThis->m_aClients[ClientId].Reset();
 
 	pThis->GameServer()->TeehistorianRecordPlayerJoin(ClientId, false);
@@ -1270,6 +1274,8 @@ int CServer::NewClientCallback(int ClientId, void *pUser, bool Sixup)
 	pThis->m_aClients[ClientId].m_DDNetVersion = VERSION_NONE;
 	pThis->m_aClients[ClientId].m_GotDDNetVersionPacket = false;
 	pThis->m_aClients[ClientId].m_DDNetVersionSettled = false;
+	pThis->m_aClients[ClientId].m_GotCapabilitiesPacket = false;
+	pThis->m_aClients[ClientId].m_Capabilities = 0;
 	pThis->m_aClients[ClientId].Reset();
 	pThis->m_aClients[ClientId].m_Sixup = Sixup;
 
@@ -1380,7 +1386,7 @@ void CServer::SendRconType(int ClientId, bool UsernameReq)
 
 void CServer::SendCapabilities(int ClientId)
 {
-	CMsgPacker Msg(NETMSG_CAPABILITIES, true);
+	CMsgPacker Msg(NETMSG_SERVERCAPABILITIES, true);
 	Msg.AddInt(SERVERCAP_CURVERSION); // version
 	Msg.AddInt(
 		SERVERCAPFLAG_DDNET |
@@ -1828,6 +1834,14 @@ void CServer::ProcessClientPacket(CNetChunk *pPacket)
 
 			OnNetMsgClientVer(ClientId, pConnectionId, DDNetVersion, pDDNetVersionStr);
 		}
+		else if(Msg == NETMSG_CLIENTCAPABILITIES)
+		{
+			int Version = Unpacker.GetInt();
+			int Flags = Unpacker.GetInt();
+			if(Unpacker.Error())
+				return;
+			OnNetMsgClientCapabilities(ClientId, Version, Flags);
+		}
 		else if(Msg == NETMSG_INFO)
 		{
 			const char *pVersion = Unpacker.GetString(CUnpacker::SANITIZE_CC);
@@ -2094,6 +2108,16 @@ void CServer::OnNetMsgClientVer(int ClientId, CUuid *pConnectionId, int DDNetVer
 	m_aClients[ClientId].m_State = CClient::STATE_AUTH;
 }
 
+void CServer::OnNetMsgClientCapabilities(int ClientId, int Version, int Flags)
+{
+	if(m_aClients[ClientId].m_State != CClient::STATE_PREAUTH)
+		return;
+	if(Version <= 0)
+		return;
+	m_aClients[ClientId].m_Capabilities = Flags;
+	m_aClients[ClientId].m_GotCapabilitiesPacket = true;
+}
+
 void CServer::OnNetMsgInfo(int ClientId, const char *pVersion, const char *pPasswordOrNullptr)
 {
 	if(m_aClients[ClientId].m_State != CClient::STATE_PREAUTH && m_aClients[ClientId].m_State != CClient::STATE_AUTH)
@@ -2217,8 +2241,7 @@ void CServer::OnNetMsgRconCmd(int ClientId, const char *pCmd)
 {
 	if(!str_comp(pCmd, "crashmeplx"))
 	{
-		int Version = m_aClients[ClientId].m_DDNetVersion;
-		if(GameServer()->PlayerExists(ClientId) && Version < VERSION_DDNET_OLD)
+		if(GameServer()->PlayerExists(ClientId) && !IsIdentifiedDDNet(ClientId))
 		{
 			m_aClients[ClientId].m_DDNetVersion = VERSION_DDNET_OLD;
 			GameServer()->ReinitPlayerMap(ClientId, false);
@@ -3007,6 +3030,59 @@ void CServer::UpdateServerInfo(bool Resend)
 	m_ServerInfoNeedsUpdate = false;
 }
 
+void CServer::LegacySetClientCapabilities(int ClientId, int ClientVersion)
+{
+	// Updated client communicated what it supports already during connection process
+	if(m_aClients[ClientId].m_GotCapabilitiesPacket)
+		return;
+
+	int Flags = 0;
+	if(ClientVersion >= VERSION_DDNET_WHISPER)
+		Flags |= CLIENTCAPFLAG_WHISPER;
+	if(ClientVersion >= VERSION_DDNET_ANTIPING_PROJECTILE)
+		Flags |= CLIENTCAPFLAG_ANTIPING_PROJECTILE;
+	if(ClientVersion >= VERSION_DDNET_UPDATER_FIXED)
+		Flags |= CLIENTCAPFLAG_UPDATER_FIXED;
+	if(ClientVersion >= VERSION_DDNET_GAMETICK)
+		Flags |= CLIENTCAPFLAG_GAMETICK;
+	if(ClientVersion >= VERSION_DDNET_EARLY_VERSION)
+		Flags |= CLIENTCAPFLAG_EARLY_VERSION;
+	if(ClientVersion >= VERSION_DDNET_MSG_LEGACY)
+		Flags |= CLIENTCAPFLAG_MSG_LEGACY;
+	if(ClientVersion >= VERSION_DDNET_INDEPENDENT_SPECTATORS_TEAM)
+		Flags |= CLIENTCAPFLAG_INDEPENDENT_SPECTATORS_TEAM;
+	if(ClientVersion >= VERSION_DDNET_WEAPON_SHIELDS)
+		Flags |= CLIENTCAPFLAG_WEAPON_SHIELDS;
+	if(ClientVersion >= VERSION_DDNET_NEW_HUD)
+		Flags |= CLIENTCAPFLAG_NEW_HUD;
+	if(ClientVersion >= VERSION_DDNET_MULTI_LASER)
+		Flags |= CLIENTCAPFLAG_MULTI_LASER;
+	if(ClientVersion >= VERSION_DDNET_ENTITY_NETOBJS)
+		Flags |= CLIENTCAPFLAG_ENTITY_NETOBJS;
+	if(ClientVersion >= VERSION_DDNET_REDIRECT)
+		Flags |= CLIENTCAPFLAG_REDIRECT;
+	if(ClientVersion >= VERSION_DDNET_PLAYERFLAG_SPEC_CAM)
+		Flags |= CLIENTCAPFLAG_PLAYERFLAG_SPEC_CAM;
+	if(ClientVersion >= VERSION_DDNET_RECONNECT)
+		Flags |= CLIENTCAPFLAG_RECONNECT;
+	if(ClientVersion >= VERSION_DDNET_128_PLAYERS)
+		Flags |= CLIENTCAPFLAG_128_PLAYERS;
+	if(ClientVersion >= VERSION_DDNET_PREINPUT)
+		Flags |= CLIENTCAPFLAG_PREINPUT;
+	if(ClientVersion >= VERSION_DDNET_SAVE_CODE)
+		Flags |= CLIENTCAPFLAG_SAVE_CODE;
+	if(ClientVersion >= VERSION_DDNET_IMPORTANT_ALERT)
+		Flags |= CLIENTCAPFLAG_IMPORTANT_ALERT;
+	if(ClientVersion >= VERSION_DDNET_MAP_BESTTIME)
+		Flags |= CLIENTCAPFLAG_MAP_BESTTIME;
+	if(ClientVersion >= VERSION_DDNET_128_TEAMS)
+		Flags |= CLIENTCAPFLAG_128_TEAMS;
+	if(ClientVersion >= VERSION_DDNET_PICKUP_FREEZE)
+		Flags |= CLIENTCAPFLAG_PICKUP_FREEZE;
+
+	m_aClients[ClientId].m_Capabilities = Flags;
+}
+
 int CServer::GetMaxClients(int ClientId) const
 {
 	// Shouldn't catch anything currently
@@ -3015,9 +3091,9 @@ int CServer::GetMaxClients(int ClientId) const
 
 	if(m_aClients[ClientId].m_Sixup)
 		return LEGACY_MAX_CLIENTS;
-	if(m_aClients[ClientId].m_DDNetVersion >= VERSION_DDNET_128_PLAYERS)
+	if(HasCapability(ClientId, CLIENTCAPFLAG_128_PLAYERS))
 		return MAX_CLIENTS;
-	if(m_aClients[ClientId].m_DDNetVersion >= VERSION_DDNET_OLD)
+	if(IsIdentifiedDDNet(ClientId))
 		return LEGACY_MAX_CLIENTS;
 	return VANILLA_MAX_CLIENTS;
 }

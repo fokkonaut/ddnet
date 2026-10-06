@@ -170,10 +170,9 @@ void CPickup::Snap(int SnappingClient)
 	if(NetworkClipped(SnappingClient) || !GetId().has_value())
 		return;
 
-	int SnappingClientVersion = GameServer()->GetClientVersion(SnappingClient);
 	bool Sixup = Server()->IsSixup(SnappingClient);
 
-	if(SnappingClientVersion < VERSION_DDNET_ENTITY_NETOBJS)
+	if(!Server()->HasCapability(SnappingClient, CLIENTCAPFLAG_ENTITY_NETOBJS))
 	{
 		CCharacter *pChar = GameServer()->GetPlayerChar(SnappingClient);
 
@@ -185,7 +184,7 @@ void CPickup::Snap(int SnappingClient)
 			return;
 	}
 
-	GameServer()->SnapPickup(CSnapContext(SnappingClientVersion, Sixup, SnappingClient), GetId().value(), m_Pos, m_Type, m_Subtype, m_Number, m_Flags);
+	GameServer()->SnapPickup(CSnapContext(Server()->GetCapabilities(SnappingClient), Sixup, SnappingClient), GetId().value(), m_Pos, m_Type, m_Subtype, m_Number, m_Flags);
 }
 
 void CPickup::Move()

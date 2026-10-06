@@ -66,17 +66,17 @@ struct CScorePlayerResult;
 
 struct CSnapContext
 {
-	CSnapContext(int Version, bool Sixup, int ClientId) :
-		m_ClientVersion(Version), m_Sixup(Sixup), m_ClientId(ClientId)
+	CSnapContext(int Capabilities, bool Sixup, int ClientId) :
+		m_Capabilities(Capabilities), m_Sixup(Sixup), m_ClientId(ClientId)
 	{
 	}
 
-	int GetClientVersion() const { return m_ClientVersion; }
+	int GetCapabilities() const { return m_Capabilities; }
 	bool IsSixup() const { return m_Sixup; }
 	int ClientId() const { return m_ClientId; }
 
 private:
-	int m_ClientVersion;
+	int m_Capabilities;
 	bool m_Sixup;
 	int m_ClientId;
 };
@@ -421,7 +421,7 @@ public:
 	int64_t m_NonEmptySince;
 	int64_t m_LastMapVote;
 	int GetClientVersion(int ClientId) const;
-	CClientMask ClientsMaskExcludeClientVersionAndHigher(int Version) const;
+	CClientMask ClientsMaskExcludeCapability(int Flags) const;
 	bool PlayerExists(int ClientId) const override { return m_apPlayers[ClientId]; }
 	// Returns true if someone is actively moderating.
 	bool PlayerModerating() const;
