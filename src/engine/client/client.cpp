@@ -239,6 +239,11 @@ int CClient::SendMsgActive(CMsgPacker *pMsg, int Flags)
 
 void CClient::SendInfo(int Conn)
 {
+	CMsgPacker MsgCap(NETMSG_CLIENTCAPABILITIES, true);
+	MsgCap.AddInt(CLIENTCAP_CURVERSION);
+	MsgCap.AddInt(CLIENTCAPFLAG_ALL_FLAGS_SET);
+	SendMsg(Conn, &MsgCap, MSGFLAG_VITAL);
+
 	CMsgPacker MsgVer(NETMSG_CLIENTVER, true);
 	MsgVer.AddRaw(&m_ConnectionId, sizeof(m_ConnectionId));
 	MsgVer.AddInt(GameClient()->DDNetVersion());
@@ -1698,7 +1703,7 @@ void CClient::ProcessServerPacket(CNetChunk *pPacket, int Conn, bool Dummy)
 			MapDetails.m_Sha256 = *pMapSha256;
 			str_copy(MapDetails.m_aUrl, pMapUrl);
 		}
-		else if(Conn == CONN_MAIN && (pPacket->m_Flags & NET_CHUNKFLAG_VITAL) != 0 && Msg == NETMSG_CAPABILITIES)
+		else if(Conn == CONN_MAIN && (pPacket->m_Flags & NET_CHUNKFLAG_VITAL) != 0 && Msg == NETMSG_SERVERCAPABILITIES)
 		{
 			if(!m_CanReceiveServerCapabilities)
 			{

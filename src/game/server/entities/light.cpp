@@ -101,8 +101,6 @@ void CLight::Snap(int SnappingClient)
 	if((NetworkClipped(SnappingClient, m_Pos) && NetworkClipped(SnappingClient, m_To)) || !GetId().has_value())
 		return;
 
-	int SnappingClientVersion = GameServer()->GetClientVersion(SnappingClient);
-
 	CCharacter *pChr = GameServer()->GetPlayerChar(SnappingClient);
 
 	if(SnappingClient != SERVER_DEMO_CLIENT && (GameServer()->m_apPlayers[SnappingClient]->GetTeam() == TEAM_SPECTATORS || GameServer()->m_apPlayers[SnappingClient]->IsPaused()) && GameServer()->m_apPlayers[SnappingClient]->SpectatorId() != SPEC_FREEVIEW)
@@ -125,7 +123,7 @@ void CLight::Snap(int SnappingClient)
 		From = m_To;
 	}
 
-	if(SnappingClientVersion < VERSION_DDNET_ENTITY_NETOBJS)
+	if(!Server()->HasCapability(SnappingClient, CLIENTCAPFLAG_ENTITY_NETOBJS))
 	{
 		int Tick = (Server()->Tick() % Server()->TickSpeed()) % 6;
 		if(pChr && pChr->IsAlive() && m_Layer == LAYER_SWITCH && m_Number > 0 && !Switchers()[m_Number].m_aStatus[pChr->Team()] && Tick)
@@ -138,6 +136,6 @@ void CLight::Snap(int SnappingClient)
 			StartTick = Server()->Tick();
 	}
 
-	GameServer()->SnapLaserObject(CSnapContext(SnappingClientVersion, Server()->IsSixup(SnappingClient), SnappingClient), GetId().value(),
+	GameServer()->SnapLaserObject(CSnapContext(Server()->GetCapabilities(SnappingClient), Server()->IsSixup(SnappingClient), SnappingClient), GetId().value(),
 		m_Pos, From, StartTick, -1, LASERTYPE_FREEZE, 0, m_Number);
 }

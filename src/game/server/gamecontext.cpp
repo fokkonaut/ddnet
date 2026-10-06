@@ -560,7 +560,7 @@ void CGameContext::SnapSwitchers(int SnappingClient)
 
 void CGameContext::SnapLaserObject(const CSnapContext &Context, int SnapId, const vec2 &To, const vec2 &From, int StartTick, int Owner, int LaserType, int Subtype, int SwitchNumber) const
 {
-	if(Context.GetClientVersion() >= VERSION_DDNET_MULTI_LASER)
+	if(Context.GetCapabilities() & CLIENTCAPFLAG_MULTI_LASER)
 	{
 		CNetObj_DDNetLaser Laser = {};
 		Laser.m_ToX = (int)To.x;
@@ -591,7 +591,7 @@ void CGameContext::SnapLaserObject(const CSnapContext &Context, int SnapId, cons
 
 void CGameContext::SnapPickup(const CSnapContext &Context, int SnapId, const vec2 &Pos, int Type, int SubType, int SwitchNumber, int Flags) const
 {
-	if(Type == POWERUP_FREEZE && Context.GetClientVersion() < VERSION_DDNET_PICKUP_FREEZE)
+	if(Type == POWERUP_FREEZE && !(Context.GetCapabilities() & CLIENTCAPFLAG_PICKUP_FREEZE))
 	{
 		Type = POWERUP_HEALTH;
 	}
@@ -603,7 +603,7 @@ void CGameContext::SnapPickup(const CSnapContext &Context, int SnapId, const vec
 		Pickup.m_Type = PickupType_SixToSeven(Type, SubType);
 		Server()->SnapNewItem(SnapId, Pickup);
 	}
-	else if(Context.GetClientVersion() >= VERSION_DDNET_ENTITY_NETOBJS)
+	else if(Context.GetCapabilities() & CLIENTCAPFLAG_ENTITY_NETOBJS)
 	{
 		CNetObj_DDNetPickup Pickup = {};
 		Pickup.m_X = (int)Pos.x;
@@ -622,7 +622,7 @@ void CGameContext::SnapPickup(const CSnapContext &Context, int SnapId, const vec
 		Pickup.m_Y = (int)Pos.y;
 
 		Pickup.m_Type = Type;
-		if(Context.GetClientVersion() < VERSION_DDNET_WEAPON_SHIELDS)
+		if(!(Context.GetCapabilities() & CLIENTCAPFLAG_WEAPON_SHIELDS))
 		{
 			if(Type >= POWERUP_ARMOR_SHOTGUN && Type <= POWERUP_ARMOR_LASER)
 			{
@@ -835,7 +835,7 @@ void CGameContext::SendServerAlert(const char *pMessage)
 			continue;
 		}
 
-		if(m_apPlayers[ClientId]->GetClientVersion() >= VERSION_DDNET_IMPORTANT_ALERT)
+		if(Server()->HasCapability(ClientId, CLIENTCAPFLAG_IMPORTANT_ALERT))
 		{
 			CNetMsg_Sv_ServerAlert Msg;
 			Msg.m_pMessage = pMessage;
@@ -863,7 +863,7 @@ void CGameContext::SendModeratorAlert(int ToClientId, const char *pMessage)
 	dbg_assert(in_range(ToClientId, 0, MAX_CLIENTS - 1), "SendImportantAlert ToClientId invalid: %d", ToClientId);
 	dbg_assert(m_apPlayers[ToClientId] != nullptr, "Client not online: %d", ToClientId);
 
-	if(m_apPlayers[ToClientId]->GetClientVersion() >= VERSION_DDNET_IMPORTANT_ALERT)
+	if(Server()->HasCapability(ToClientId, CLIENTCAPFLAG_IMPORTANT_ALERT))
 	{
 		CNetMsg_Sv_ModeratorAlert Msg;
 		Msg.m_pMessage = pMessage;
@@ -1231,7 +1231,7 @@ void CGameContext::OnTick()
 		{
 			IServer::CClientInfo Info;
 			if(m_apPlayers[i]->m_DDNetVersionKickTick > 0 && Server()->Tick() >= m_apPlayers[i]->m_DDNetVersionKickTick && !Server()->IsSixup(i) &&
-				Server()->GetClientInfo(i, &Info) && Info.m_DDNetVersion < VERSION_DDNET_OLD)
+				Server()->GetClientInfo(i, &Info) && !Server()->IsIdentifiedDDNet(i))
 			{
 				if(!g_Config.m_SvVanillaConnections)
 				{
@@ -1550,7 +1550,7 @@ void CGameContext::PreInputClients(int ClientId, bool *pClients)
 		if(pPlayer->GetTeam() == TEAM_SPECTATORS || Team != GetDDRaceTeam(Id) || pPlayer->IsAfk())
 			continue;
 
-		if(Server()->GetClientVersion(Id) < VERSION_DDNET_PREINPUT)
+		if(!Server()->HasCapability(Id, CLIENTCAPFLAG_PREINPUT))
 			continue;
 
 		if(!pInputChr->CanSnapCharacter(Id) || pInputChr->NetworkClipped(Id))
@@ -1999,8 +1999,10 @@ bool CGameContext::OnClientDDNetVersionKnown(int ClientId)
 		return true;
 	}
 
+	Server()->LegacySetClientCapabilities(ClientId, ClientVersion);
+
 	CPlayer *pPlayer = m_apPlayers[ClientId];
-	if(ClientVersion >= VERSION_DDNET_GAMETICK)
+	if(Server()->HasCapability(ClientId, CLIENTCAPFLAG_GAMETICK))
 		pPlayer->m_TimerType = g_Config.m_SvDefaultTimerType;
 
 	// First update the teams state.
@@ -2010,11 +2012,11 @@ bool CGameContext::OnClientDDNetVersionKnown(int ClientId)
 	SendRecord(ClientId);
 
 	// And report correct tunings.
-	if(ClientVersion < VERSION_DDNET_EARLY_VERSION)
+	if(!Server()->HasCapability(ClientId, CLIENTCAPFLAG_EARLY_VERSION))
 		SendTuningParams(ClientId, pPlayer->m_TuneZone);
 
 	// Tell old clients to update.
-	if(ClientVersion < VERSION_DDNET_UPDATER_FIXED && g_Config.m_SvClientSuggestionOld[0] != '\0')
+	if(!Server()->HasCapability(ClientId, CLIENTCAPFLAG_UPDATER_FIXED) && g_Config.m_SvClientSuggestionOld[0] != '\0')
 		SendBroadcast(g_Config.m_SvClientSuggestionOld, ClientId);
 	// Tell known bot clients that they're botting and we know it.
 	if(((ClientVersion >= 15 && ClientVersion < 100) || ClientVersion == 502) && g_Config.m_SvClientSuggestionBot[0] != '\0')
@@ -4734,7 +4736,7 @@ bool CGameContext::IsRunningKickOrSpecVote(int ClientId) const
 
 void CGameContext::SendRecord(int ClientId)
 {
-	if(Server()->IsSixup(ClientId) || GetClientVersion(ClientId) >= VERSION_DDNET_MAP_BESTTIME)
+	if(Server()->IsSixup(ClientId) || Server()->HasCapability(ClientId, CLIENTCAPFLAG_MAP_BESTTIME))
 		return;
 
 	CNetMsg_Sv_Record Msg;
@@ -4742,7 +4744,7 @@ void CGameContext::SendRecord(int ClientId)
 	MsgLegacy.m_PlayerTimeBest = Msg.m_PlayerTimeBest = static_cast<int>(time_even_centiseconds_from_seconds(Score()->PlayerData(ClientId)->m_BestTime.value_or(0.0f)));
 	MsgLegacy.m_ServerTimeBest = Msg.m_ServerTimeBest = m_pController->m_CurrentRecord.has_value() && !g_Config.m_SvHideScore ? static_cast<int>(time_even_centiseconds_from_seconds(m_pController->m_CurrentRecord.value())) : 0;
 	Server()->SendPackMsg(&Msg, MSGFLAG_VITAL, ClientId);
-	if(GetClientVersion(ClientId) < VERSION_DDNET_MSG_LEGACY)
+	if(!Server()->HasCapability(ClientId, CLIENTCAPFLAG_MSG_LEGACY))
 	{
 		Server()->SendPackMsg(&MsgLegacy, MSGFLAG_VITAL, ClientId);
 	}
@@ -4750,8 +4752,6 @@ void CGameContext::SendRecord(int ClientId)
 
 void CGameContext::SendFinish(int ClientId, float Time, std::optional<float> PreviousBestTime)
 {
-	int ClientVersion = m_apPlayers[ClientId]->GetClientVersion();
-
 	if(!Server()->IsSixup(ClientId))
 	{
 		CNetMsg_Sv_DDRaceTime Msg;
@@ -4764,9 +4764,9 @@ void CGameContext::SendFinish(int ClientId, float Time, std::optional<float> Pre
 		{
 			MsgLegacy.m_Check = Msg.m_Check = static_cast<int>(time_even_centiseconds_from_seconds(Time) - time_even_centiseconds_from_seconds(PreviousBestTime.value()));
 		}
-		if(VERSION_DDRACE <= ClientVersion)
+		if(Server()->IsDDRaceClient(ClientId))
 		{
-			if(ClientVersion < VERSION_DDNET_MSG_LEGACY)
+			if(!Server()->HasCapability(ClientId, CLIENTCAPFLAG_MSG_LEGACY))
 			{
 				Server()->SendPackMsg(&Msg, MSGFLAG_VITAL, ClientId);
 			}
@@ -4830,7 +4830,7 @@ void CGameContext::SendSaveCode(int Team, int TeamSize, int State, const char *p
 		if(GetDDRaceTeam(MemberId) != Team)
 			continue;
 
-		if(GetClientVersion(MemberId) >= VERSION_DDNET_SAVE_CODE)
+		if(Server()->HasCapability(MemberId, CLIENTCAPFLAG_SAVE_CODE))
 		{
 			Server()->SendMsg(&Msg, MSGFLAG_VITAL, MemberId);
 		}
@@ -5075,7 +5075,7 @@ void CGameContext::WhisperId(int ClientId, int VictimId, const char *pMessage)
 	Msg.m_pMessage = aCensoredMessage;
 	Msg.m_TargetId = VictimId;
 
-	if(Server()->IsSixup(ClientId) || GetClientVersion(ClientId) >= VERSION_DDNET_WHISPER)
+	if(Server()->IsSixup(ClientId) || Server()->HasCapability(ClientId, CLIENTCAPFLAG_WHISPER))
 	{
 		// The translation layer will send the correct 0.6 packet after translating
 		Msg.m_Mode = (int)protocol7::NUM_CHATS + TEAM_WHISPER_SEND;
@@ -5093,7 +5093,7 @@ void CGameContext::WhisperId(int ClientId, int VictimId, const char *pMessage)
 		return;
 	}
 
-	if(Server()->IsSixup(VictimId) || GetClientVersion(VictimId) >= VERSION_DDNET_WHISPER)
+	if(Server()->IsSixup(VictimId) || Server()->HasCapability(VictimId, CLIENTCAPFLAG_WHISPER))
 	{
 		// The translation layer will send the correct 0.6 packet after translating
 		Msg.m_Mode = (int)protocol7::NUM_CHATS + TEAM_WHISPER_RECV;
@@ -5177,12 +5177,12 @@ int CGameContext::GetClientVersion(int ClientId) const
 	return Server()->GetClientVersion(ClientId);
 }
 
-CClientMask CGameContext::ClientsMaskExcludeClientVersionAndHigher(int Version) const
+CClientMask CGameContext::ClientsMaskExcludeCapability(int Flags) const
 {
 	CClientMask Mask;
 	for(int i = 0; i < MAX_CLIENTS; ++i)
 	{
-		if(GetClientVersion(i) >= Version)
+		if(Server()->HasCapability(i, Flags))
 			continue;
 		Mask.set(i);
 	}

@@ -309,7 +309,7 @@ void CCharacter::HandleNinja()
 
 	if(NinjaTime % Server()->TickSpeed() == 0 && NinjaTime / Server()->TickSpeed() <= 5)
 	{
-		GameServer()->CreateDamageInd(m_Pos, 0, NinjaTime / Server()->TickSpeed(), TeamMask() & GameServer()->ClientsMaskExcludeClientVersionAndHigher(VERSION_DDNET_NEW_HUD));
+		GameServer()->CreateDamageInd(m_Pos, 0, NinjaTime / Server()->TickSpeed(), TeamMask() & GameServer()->ClientsMaskExcludeCapability(CLIENTCAPFLAG_NEW_HUD));
 	}
 
 	GameServer()->m_pController->SetArmorProgress(this, NinjaTime);
@@ -1086,7 +1086,6 @@ void CCharacter::CancelSwapRequests()
 
 void CCharacter::SnapCharacter(int SnappingClient, int MapId)
 {
-	int SnappingClientVersion = GameServer()->GetClientVersion(SnappingClient);
 	CCharacterCore *pCore;
 	int Weapon = m_Core.m_ActiveWeapon, AmmoCount = 0,
 	    Health = 0, Armor = 0;
@@ -1104,14 +1103,14 @@ void CCharacter::SnapCharacter(int SnappingClient, int MapId)
 	}
 
 	// use ninja graphic for old clients if player is frozen
-	if((m_Core.m_DeepFrozen || m_FreezeTime > 0) && SnappingClientVersion < VERSION_DDNET_NEW_HUD)
+	if((m_Core.m_DeepFrozen || m_FreezeTime > 0) && !Server()->HasCapability(SnappingClient, CLIENTCAPFLAG_NEW_HUD))
 		Weapon = WEAPON_NINJA;
 
 	// solo, collision, jetpack and ninjajetpack prediction
 	if(m_pPlayer->GetCid() == SnappingClient)
 	{
 		int Faketuning = 0;
-		if(m_pPlayer->GetClientVersion() < VERSION_DDNET_NEW_HUD)
+		if(!Server()->HasCapability(m_pPlayer->GetCid(), CLIENTCAPFLAG_NEW_HUD))
 		{
 			if(m_Core.m_Jetpack && Weapon != WEAPON_NINJA)
 				Faketuning |= FAKETUNE_JETPACK;
@@ -1266,8 +1265,6 @@ void CCharacter::Snap(int SnappingClient)
 	if(!IsSnappingCharacterInView(SnappingClient) && m_pPlayer->GetCid() != SnappingClient)
 		return;
 
-	int SnappingClientVersion = GameServer()->GetClientVersion(SnappingClient);
-
 	// Translate id, if we are not in the map of the other person display us as weapon and our hook as a laser.
 	// This shouldn't happen but is realistically impossible to avoid as soon as you zoom out a little or simply
 	// more than 62 tees are around you. A bug might also occur in the playermapping algorithm, so best practice is to never let
@@ -1275,7 +1272,7 @@ void CCharacter::Snap(int SnappingClient)
 	int TranslatedId = m_pPlayer->GetCid();
 	if(SnappingClient > -1 && !Server()->Translate(TranslatedId, SnappingClient))
 	{
-		CSnapContext SnapContext = CSnapContext(SnappingClientVersion, Server()->IsSixup(SnappingClient), SnappingClient);
+		CSnapContext SnapContext = CSnapContext(Server()->GetCapabilities(SnappingClient), Server()->IsSixup(SnappingClient), SnappingClient);
 
 		int Subtype = GetActiveWeapon();
 		int Type = Subtype == WEAPON_NINJA ? POWERUP_NINJA : POWERUP_WEAPON;
@@ -1608,7 +1605,7 @@ void CCharacter::SetTimeCheckpoint(int TimeCheckpoint)
 		m_LastTimeCp = TimeCheckpoint;
 		m_aCurrentTimeCp[m_LastTimeCp] = m_Time;
 		m_TimeCpBroadcastEndTick = Server()->Tick() + Server()->TickSpeed() * 2;
-		if(m_pPlayer->GetClientVersion() >= VERSION_DDRACE || Server()->IsSixup(m_pPlayer->GetCid()))
+		if(Server()->IsDDRaceClient(m_pPlayer->GetCid()) || Server()->IsSixup(m_pPlayer->GetCid()))
 		{
 			CPlayerData *pData = GameServer()->Score()->PlayerData(m_pPlayer->GetCid());
 			if(pData->m_aBestTimeCp[m_LastTimeCp] != 0.0f)
@@ -2240,7 +2237,7 @@ void CCharacter::DDRaceTick()
 	{
 		if(m_FreezeTime % Server()->TickSpeed() == Server()->TickSpeed() - 1)
 		{
-			GameServer()->CreateDamageInd(m_Pos, 0, (m_FreezeTime + 1) / Server()->TickSpeed(), TeamMask() & GameServer()->ClientsMaskExcludeClientVersionAndHigher(VERSION_DDNET_NEW_HUD));
+			GameServer()->CreateDamageInd(m_Pos, 0, (m_FreezeTime + 1) / Server()->TickSpeed(), TeamMask() & GameServer()->ClientsMaskExcludeCapability(CLIENTCAPFLAG_NEW_HUD));
 		}
 		m_FreezeTime--;
 		m_Input.m_Direction = 0;
